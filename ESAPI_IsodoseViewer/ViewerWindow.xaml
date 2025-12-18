@@ -1,0 +1,44 @@
+﻿<Window x:Class="ESAPI_IsodoseViewer.ViewerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ESAPI Pro Isodose Viewer" Height="900" Width="1100" Background="#111">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="250"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Viewbox Grid.Column="0" Stretch="Uniform" Margin="10">
+            <Grid Name="ImageContainer" Background="Black" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Image x:Name="CtImageControl" Stretch="None"/>
+                <Canvas x:Name="IsodoseCanvas" Background="Transparent"/>
+            </Grid>
+        </Viewbox>
+
+        <StackPanel Grid.Column="1" Margin="10" Background="#222">
+            <TextBlock Text="IKKUNOINTI" Foreground="Gold" FontWeight="Bold" Margin="0,10,0,10" HorizontalAlignment="Center"/>
+            <TextBlock Text="Level (L)" Foreground="White"/>
+            <Slider x:Name="LevelSlider" Minimum="-1000" Maximum="1000" Value="40" ValueChanged="Windowing_ValueChanged"/>
+            <TextBlock Text="Width (W)" Foreground="White" Margin="0,10,0,0"/>
+            <Slider x:Name="WidthSlider" Minimum="1" Maximum="3000" Value="400" ValueChanged="Windowing_ValueChanged"/>
+            
+            <TextBlock Text="PRESETIT" Foreground="Gold" FontWeight="Bold" Margin="0,20,0,10" HorizontalAlignment="Center"/>
+            <Button Content="Soft Tissue" Click="Preset_SoftTissue" Margin="0,2"/>
+            <Button Content="Lung" Click="Preset_Lung" Margin="0,2"/>
+            <Button Content="Bone" Click="Preset_Bone" Margin="0,2"/>
+            <Button Content="AUTO" Click="Preset_Auto" Margin="0,10" Background="DarkGreen" Foreground="White"/>
+            
+            <Button Content="VIE DEBUG-TIEDOT" Click="ExportDebugInfo" Margin="0,20" Background="DarkRed" Foreground="White"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="10" Background="#333">
+            <TextBlock Text="Leike (Z):" Foreground="White" VerticalAlignment="Center" Margin="10,0"/>
+            <Slider x:Name="SliceSlider" Width="600" Margin="10,0" ValueChanged="SliceSlider_ValueChanged"/>
+            <TextBlock x:Name="SliceInfo" Text="0" Foreground="White" VerticalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</Window>
