@@ -148,9 +148,16 @@ namespace ESAPI_IsodoseViewer
         }
 
         /// <summary>
-        /// Piirtää annosjakauman läpikuultavina värialueina (Color Wash).
-        /// Korjaa aiemman "index 1 vs 10000" skaalausongelman.
+        /// Renderöi annosjakauman värikerroksena (Color Wash) CT-kuvan päälle.
+        /// <br/>
+        /// Laskenta huomioi:
+        /// <list type="bullet">
+        /// <item>Annosmatriisin ja CT-kuvan eriävät resoluutiot ja origot.</item>
+        /// <item>Muunnoksen raaka-arvoista (int) fysikaaliseksi annokseksi (Gy), huomioiden esitystavan (Relative/Absolute).</item>
+        /// <item>Suunnitelman normalisoinnin ja kokonaisannoksen.</item>
+        /// </list>
         /// </summary>
+        /// <param name="ctSliceIndex">Nykyisen CT-leikkeen indeksi (Z).</param>
         private void DrawColorWashDose(int ctSliceIndex)
         {
             IsodoseCanvas.Children.Clear();
@@ -159,48 +166,78 @@ namespace ESAPI_IsodoseViewer
 
             VMS.TPS.Common.Model.API.Image image = _context.Image;
 
-            // --- 1. Määritetään referenssiannos (100% taso) ---
+            // --------------------------------------------------------------------------------
+            // 1. Määritetään referenssiannos (100% isodoositaso Grayna)
+            // --------------------------------------------------------------------------------
             double prescriptionGy = _plan.TotalDose.Dose;
+
+            // Varmistetaan, että resepti on Gray-yksiköissä laskentaa varten
             if (_plan.TotalDose.Unit == DoseValue.DoseUnit.cGy)
                 prescriptionGy /= 100.0;
 
             double normalization = _plan.PlanNormalizationValue;
 
-            // Käsittele normalisoinnin poikkeustilanteet (ESAPI voi palauttaa NaN tai 1.0 prosenntien sijaan)
-            if (double.IsNaN(normalization) || normalization <= 0) normalization = 100.0;
-            else if (normalization < 5.0) normalization *= 100.0; // Oletetaan kertoimeksi, jos alle 5
+            // Robustisuustarkistus: Jos ESAPI palauttaa puuttuvan tai epäloogisen normalisoinnin
+            if (double.IsNaN(normalization) || normalization <= 0)
+                normalization = 100.0;
+            else if (normalization < 5.0)
+                normalization *= 100.0; // Oletus: arvo on annettu kertoimena (esim. 1.0) eikä prosentteina
 
+            // Lasketaan 100% isodoosia vastaava fysikaalinen annos
             double referenceDoseGy = prescriptionGy * (normalization / 100.0);
 
-            // Turvaverkko: jos laskettu referenssi on epärealistinen, käytetään reseptiä
+            // Turvaverkko: Käytetään reseptiä suoraan, jos laskenta tuottaa epärealistisen pienen arvon
             if (referenceDoseGy < 0.1) referenceDoseGy = prescriptionGy;
 
-            // --- 2. Skaalauskertoimien laskenta (KRIITTINEN KORJAUS) ---
-            // Käytetään suurta indeksiä (10000) lineaarisen kertoimen laskemiseen.
-            // Tämä minimoi liukulukujen pyöristysvirheet, jotka aiheuttavat vääriä annosarvoja (esim. 102 Gy).
+            // --------------------------------------------------------------------------------
+            // 2. Skaalauskertoimien laskenta (Raw Voxel Value -> Physical Dose)
+            // --------------------------------------------------------------------------------
+            // Käytetään laajaa väliä (0 vs 10000) lineaarisen kertoimen laskemiseen tarkkuuden maksimoimiseksi.
             DoseValue dv0 = dose.VoxelToDoseValue(0);
             DoseValue dvRef = dose.VoxelToDoseValue(10000);
 
-            double gy0 = (dv0.Unit == DoseValue.DoseUnit.cGy) ? dv0.Dose / 100.0 : dv0.Dose;
-            double gyRef = (dvRef.Unit == DoseValue.DoseUnit.cGy) ? dvRef.Dose / 100.0 : dvRef.Dose;
+            // Lasketaan kulmakerroin (slope) ja vakiotermi (intercept) ESAPI:n palauttamassa yksikössä
+            double rawScale = (dvRef.Dose - dv0.Dose) / 10000.0;
+            double rawOffset = dv0.Dose;
 
-            double dOffset = gy0;
-            double dScale = (gyRef - gy0) / 10000.0;
+            // Määritetään muunnoskerroin ESAPI-yksiköstä (%, cGy, Gy) -> Gray (Gy)
+            double unitToGyFactor = 1.0;
 
-            // --- 3. Koordinaattimuunnos: CT Z -> Dose Z ---
-            // Määritetään, mikä annosmatriisin leike vastaa nykyistä CT-leikettä.
+            if (dvRef.Unit == DoseValue.DoseUnit.Percent)
+            {
+                // RELATIVE: Arvot ovat prosentteja kokonaisannoksesta.
+                // Kaava: (Prosentti / 100) * ReseptiGy
+                unitToGyFactor = prescriptionGy / 100.0;
+            }
+            else if (dvRef.Unit == DoseValue.DoseUnit.cGy)
+            {
+                // ABSOLUTE cGy: Jaetaan sadalla
+                unitToGyFactor = 0.01;
+            }
+            // Jos yksikkö on valmiiksi Gy, kerroin on 1.0
+
+            // --------------------------------------------------------------------------------
+            // 3. Koordinaattimuunnos: CT Z -> Dose Z
+            // --------------------------------------------------------------------------------
+            // Lasketaan CT-leikkeen keskipisteen Z-koordinaatti maailmankoordinaatistossa
             VVector ctPlaneCenterWorld = image.Origin + image.ZDirection * (ctSliceIndex * image.ZRes);
+
+            // Projisoidaan piste annosmatriisin Z-akselille
             VVector relativeToDoseOrigin = ctPlaneCenterWorld - dose.Origin;
             int doseSlice = (int)Math.Round(relativeToDoseOrigin.Dot(dose.ZDirection) / dose.ZRes);
 
+            // Tarkistetaan, osuuko nykyinen CT-leike annosmatriisin alueelle
             if (doseSlice < 0 || doseSlice >= dose.ZSize)
             {
-                SliceInfo.Text = $"CT Z: {ctSliceIndex} | Dose Z: {doseSlice} (Ulkopuolella)";
+                SliceInfo.Text = $"CT Z: {ctSliceIndex} | Dose Z: {doseSlice} (Annosmatriisin ulkopuolella)";
                 return;
             }
 
-            // --- 4. Piirtologiikka (Color Wash) ---
-            // Määritellään väritasot. Järjestys on merkitsevä (pienin ensin), jos piirretään päällekkäin.
+            // --------------------------------------------------------------------------------
+            // 4. Piirtologiikka (Color Wash)
+            // --------------------------------------------------------------------------------
+            // Määritellään väritasot suhteessa referenssiannokseen (100%).
+            // Piirtojärjestys: Pienimmästä suurimpaan (päällekkäin piirrettäessä).
             var levels = new[] {
                 new { Pct = 0.50, Color = Colors.Blue },
                 new { Pct = 0.80, Color = Colors.Cyan },
@@ -213,20 +250,25 @@ namespace ESAPI_IsodoseViewer
             int[,] doseBuffer = new int[dx, dy];
             dose.GetVoxels(doseSlice, doseBuffer);
 
-            // Lasketaan skaalauspiirtoa varten: Yksi annospikseli voi vastata useaa CT-pikseliä
+            // Lasketaan skaalauskerroin renderöintiä varten (Dose Pixel -> CT Pixel)
             double scaleX = dose.XRes / image.XRes;
             double scaleY = dose.YRes / image.YRes;
             double maxDoseInSlice = 0;
 
+            // Käydään läpi annosmatriisin pikselit
             for (int y = 0; y < dy; y++)
             {
                 for (int x = 0; x < dx; x++)
                 {
-                    // Muunnetaan raaka-arvo Grayksi korjatulla kertoimella
-                    double dGy = doseBuffer[x, y] * dScale + dOffset;
+                    // A. Muunnetaan raaka int-arvo ESAPI-yksiköksi (esim. %)
+                    double valInUnits = doseBuffer[x, y] * rawScale + rawOffset;
+
+                    // B. Muunnetaan ESAPI-yksikkö fysikaaliseksi Gray-arvoksi
+                    double dGy = valInUnits * unitToGyFactor;
+
                     if (dGy > maxDoseInSlice) maxDoseInSlice = dGy;
 
-                    // Etsitään korkein kynnysarvo, jonka pikseli ylittää
+                    // C. Määritetään pikselin väri korkeimman ylittyneen kynnysarvon perusteella
                     Color? pixelColor = null;
                     for (int i = levels.Length - 1; i >= 0; i--)
                     {
@@ -237,34 +279,35 @@ namespace ESAPI_IsodoseViewer
                         }
                     }
 
+                    // D. Piirretään suorakulmio, jos kynnysarvo ylittyy
                     if (pixelColor.HasValue)
                     {
-                        // Lasketaan pikselin sijainti maailmankoordinaatistossa ja projisoidaan CT-kuvalle
+                        // Lasketaan pikselin maailmankoordinaatit
                         VVector worldPos = dose.Origin +
                                            dose.XDirection * (x * dose.XRes) +
                                            dose.YDirection * (y * dose.YRes) +
                                            dose.ZDirection * (doseSlice * dose.ZRes);
 
+                        // Muunnetaan maailmankoordinaatit CT-kuvan pikselikoordinaateiksi
                         VVector diff = worldPos - image.Origin;
-
-                        // Dot-tulo huomioi mahdolliset rotaatiot
                         double px = diff.Dot(image.XDirection) / image.XRes;
                         double py = diff.Dot(image.YDirection) / image.YRes;
 
-                        // Tarkistetaan, että pikseli on kankaan alueella (huomioiden skaalauksen)
+                        // Bounds check: piirretään vain kankaan sisäpuolelle
                         if (px >= -scaleX && px < _width && py >= -scaleY && py < _height)
                         {
+                            // Luodaan Rectangle-objekti edustamaan annospikseliä
                             Rectangle rect = new Rectangle
                             {
                                 Width = scaleX,
                                 Height = scaleY,
-                                Fill = new SolidColorBrush(pixelColor.Value) { Opacity = 0.3 }, // 30% peittävyys
-                                IsHitTestVisible = false // Optimointi: ei hiiritapahtumia
+                                Fill = new SolidColorBrush(pixelColor.Value) { Opacity = 0.3 }, // Läpinäkyvyys 30%
+                                IsHitTestVisible = false // Optimointi: poistetaan hiiritapahtumat
                             };
 
-                            // Keskitetään suorakulmio laskettuun pisteeseen
-                            Canvas.SetLeft(rect, px - (scaleX / 2));
-                            Canvas.SetTop(rect, py - (scaleY / 2));
+                            // Asetetaan sijainti (keskitettynä laskettuun pisteeseen)
+                            Canvas.SetLeft(rect, px - (scaleX / 2.0));
+                            Canvas.SetTop(rect, py - (scaleY / 2.0));
 
                             IsodoseCanvas.Children.Add(rect);
                         }
@@ -272,6 +315,7 @@ namespace ESAPI_IsodoseViewer
                 }
             }
 
+            // Päivitetään info-teksti debuggausta ja käyttäjää varten
             SliceInfo.Text = $"CT Z: {ctSliceIndex} | Dose Z: {doseSlice} | Max: {maxDoseInSlice:F2} Gy | Ref 100%: {referenceDoseGy:F2} Gy";
         }
 
@@ -344,39 +388,124 @@ namespace ESAPI_IsodoseViewer
                 string path = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "ESAPI_DeepDebug.txt");
                 using (StreamWriter sw = new StreamWriter(path))
                 {
-                    sw.WriteLine("=== ESAPI DEBUG SNAPSHOT ===");
-                    sw.WriteLine($"Time: {DateTime.Now}");
+                    sw.WriteLine("==================================================================================");
+                    sw.WriteLine($"=== ESAPI MASSIVE DEBUG LOG - {DateTime.Now} ===");
+                    sw.WriteLine("==================================================================================");
 
-                    if (_context.Image != null)
+                    // 1. PERUSTIEDOT (CONTEXT)
+                    sw.WriteLine("\n--- 1. PLAN & CONTEXT ---");
+                    if (_plan == null) sw.WriteLine("PLAN IS NULL!");
+                    else
                     {
-                        sw.WriteLine($"Image ID: {_context.Image.Id}");
-                        sw.WriteLine($"Image Size: {_context.Image.XSize}, {_context.Image.YSize}, {_context.Image.ZSize}");
-                        sw.WriteLine($"Image Res: {_context.Image.XRes:F4}, {_context.Image.YRes:F4}, {_context.Image.ZRes:F4}");
+                        sw.WriteLine($"Plan ID: {_plan.Id}");
+                        sw.WriteLine($"Total Dose: {_plan.TotalDose.Dose} {_plan.TotalDose.Unit}");
+                        sw.WriteLine($"Plan Normalization: {_plan.PlanNormalizationValue}%");
+                        sw.WriteLine($"Dose Value presentation: {_plan.DoseValuePresentation}");
                     }
 
-                    if (_plan.Dose != null)
+                    // 2. IMAGE METADATA
+                    var image = _context.Image;
+                    sw.WriteLine("\n--- 2. IMAGE GEOMETRY (CT) ---");
+                    if (image == null)
                     {
-                        sw.WriteLine($"Dose ID: {_plan.Dose.Id}");
-                        sw.WriteLine($"Dose Size: {_plan.Dose.XSize}, {_plan.Dose.YSize}, {_plan.Dose.ZSize}");
-                        sw.WriteLine($"Dose Res: {_plan.Dose.XRes:F4}, {_plan.Dose.YRes:F4}, {_plan.Dose.ZRes:F4}");
+                        sw.WriteLine("IMAGE IS NULL!");
+                        return;
+                    }
+                    sw.WriteLine($"Size (X, Y, Z): {image.XSize}, {image.YSize}, {image.ZSize}");
+                    sw.WriteLine($"Res (X, Y, Z):  {image.XRes:F4}, {image.YRes:F4}, {image.ZRes:F4} mm");
+                    sw.WriteLine($"Origin (mm):    ({image.Origin.x:F2}, {image.Origin.y:F2}, {image.Origin.z:F2})");
+                    sw.WriteLine($"X-Direction:    ({image.XDirection.x:F4}, {image.XDirection.y:F4}, {image.XDirection.z:F4})");
+                    sw.WriteLine($"Y-Direction:    ({image.YDirection.x:F4}, {image.YDirection.y:F4}, {image.YDirection.z:F4})");
+                    sw.WriteLine($"Z-Direction:    ({image.ZDirection.x:F4}, {image.ZDirection.y:F4}, {image.ZDirection.z:F4})");
+                    sw.WriteLine($"DICOM Center (User Origin?): {image.UserOrigin.x:F2}, {image.UserOrigin.y:F2}, {image.UserOrigin.z:F2}");
 
-                        // Tarkistetaan skaalauskertoimet
-                        DoseValue dv0 = _plan.Dose.VoxelToDoseValue(0);
-                        DoseValue dvRef = _plan.Dose.VoxelToDoseValue(10000);
+                    // 3. DOSE METADATA
+                    var dose = _plan.Dose;
+                    sw.WriteLine("\n--- 3. DOSE GEOMETRY ---");
+                    if (dose == null)
+                    {
+                        sw.WriteLine("DOSE IS NULL!");
+                        return;
+                    }
+                    sw.WriteLine($"Size (X, Y, Z): {dose.XSize}, {dose.YSize}, {dose.ZSize}");
+                    sw.WriteLine($"Res (X, Y, Z):  {dose.XRes:F4}, {dose.YRes:F4}, {dose.ZRes:F4} mm");
+                    sw.WriteLine($"Origin (mm):    ({dose.Origin.x:F2}, {dose.Origin.y:F2}, {dose.Origin.z:F2})");
+                    sw.WriteLine($"X-Direction:    ({dose.XDirection.x:F4}, {dose.XDirection.y:F4}, {dose.XDirection.z:F4})");
+                    sw.WriteLine($"Y-Direction:    ({dose.YDirection.x:F4}, {dose.YDirection.y:F4}, {dose.YDirection.z:F4})");
+                    sw.WriteLine($"Z-Direction:    ({dose.ZDirection.x:F4}, {dose.ZDirection.y:F4}, {dose.ZDirection.z:F4})");
 
-                        double gy0 = (dv0.Unit == DoseValue.DoseUnit.cGy) ? dv0.Dose / 100.0 : dv0.Dose;
-                        double gyRef = (dvRef.Unit == DoseValue.DoseUnit.cGy) ? dvRef.Dose / 100.0 : dvRef.Dose;
-                        double dScale = (gyRef - gy0) / 10000.0;
+                    // 4. SCALING FACTOR CHECK
+                    sw.WriteLine("\n--- 4. SCALING FACTORS (Raw Int -> Physical Gy) ---");
+                    DoseValue dv0 = dose.VoxelToDoseValue(0);
+                    DoseValue dv10k = dose.VoxelToDoseValue(10000);
 
-                        sw.WriteLine($"Calculated Scaling Factor: {dScale:E6} Gy/unit");
-                        sw.WriteLine($"Offset: {gy0:F6} Gy");
+                    // Logataan mitä ESAPI palauttaa suoraan
+                    sw.WriteLine($"Voxel(0)      -> ESAPI: {dv0.Dose} {dv0.Unit}");
+                    sw.WriteLine($"Voxel(10000) -> ESAPI: {dv10k.Dose} {dv10k.Unit}");
+
+                    double gy0 = (dv0.Unit == DoseValue.DoseUnit.cGy) ? dv0.Dose / 100.0 : dv0.Dose;
+                    double gyRef = (dv10k.Unit == DoseValue.DoseUnit.cGy) ? dv10k.Dose / 100.0 : dv10k.Dose;
+
+                    double dScale = (gyRef - gy0) / 10000.0;
+                    sw.WriteLine($"Calculated Offset (Gy): {gy0}");
+                    sw.WriteLine($"Calculated Scale (Gy/RawUnit): {dScale:E8}");
+
+                    // 5. CURRENT SLICE MAPPING
+                    sw.WriteLine("\n--- 5. SLICE MAPPING (Current View) ---");
+                    int currentCtSlice = (int)SliceSlider.Value;
+                    sw.WriteLine($"Current CT Slice Index: {currentCtSlice}");
+
+                    // Laske Z-koordinaatti
+                    VVector ctPlaneCenterWorld = image.Origin + image.ZDirection * (currentCtSlice * image.ZRes);
+                    sw.WriteLine($"CT Slice Z World Pos: {ctPlaneCenterWorld.z:F2} mm");
+
+                    // Miten tämä mappautuu Dose-matriisiin?
+                    VVector relativeToDoseOrigin = ctPlaneCenterWorld - dose.Origin;
+                    double zDiff = relativeToDoseOrigin.Dot(dose.ZDirection);
+                    double doseSliceDouble = zDiff / dose.ZRes;
+                    int doseSliceIndex = (int)Math.Round(doseSliceDouble);
+
+                    sw.WriteLine($"Diff from Dose Origin Z: {zDiff:F2} mm");
+                    sw.WriteLine($"Calculated Dose Slice Index (Double): {doseSliceDouble:F4}");
+                    sw.WriteLine($"Calculated Dose Slice Index (Int):    {doseSliceIndex}");
+
+                    if (doseSliceIndex < 0 || doseSliceIndex >= dose.ZSize)
+                    {
+                        sw.WriteLine("!!! VAROITUS: Dose Slice Index on matriisin ulkopuolella !!!");
+                    }
+                    else
+                    {
+                        // 6. LINE PROFILE DUMP
+                        // Otetaan "näyte" keskeltä matriisia X-akselin suuntaisesti nähdäksesi arvot
+                        sw.WriteLine("\n--- 6. CENTRAL AXIS X-PROFILE (Dose Matrix) ---");
+                        sw.WriteLine("Format: [X-Index] | RawValue | CalculatedGy | WorldX (mm)");
+
+                        int centerY = dose.YSize / 2;
+                        int[,] buffer = new int[dose.XSize, dose.YSize];
+                        dose.GetVoxels(doseSliceIndex, buffer);
+
+                        // Dumppaa joka 10. pikseli jottei logi räjähdä, mutta näet trendin
+                        for (int x = 0; x < dose.XSize; x += 5)
+                        {
+                            int raw = buffer[x, centerY];
+                            double valGy = raw * dScale + gy0;
+
+                            // Laske tämän pikselin maailmankoordinaatti
+                            VVector pixelWorldPos = dose.Origin + dose.XDirection * (x * dose.XRes) + dose.YDirection * (centerY * dose.YRes) + dose.ZDirection * (doseSliceIndex * dose.ZRes);
+
+                            // Kirjoita vain jos arvo ei ole nolla (säästää tilaa) tai jos se on nolla, kirjoita harvemmin
+                            if (valGy > 0.05 || x % 20 == 0)
+                            {
+                                sw.WriteLine($"[{x,3}] | {raw,6} | {valGy,6:F3} Gy | X: {pixelWorldPos.x,6:F1}");
+                            }
+                        }
                     }
                 }
-                MessageBox.Show($"Debug-tiedot tallennettu: {path}");
+                MessageBox.Show($"Debug-raportti luotu: {path}\n\nTarkista tiedostosta erityisesti:\n1. Dose Res vs Image Res\n2. Dose Origin vs Image Origin\n3. Calculated Gy arvot (ovatko ne järkeviä?)");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Virhe tallennuksessa: {ex.Message}");
+                MessageBox.Show($"Virhe debug-tallennuksessa: {ex.ToString()}");
             }
         }
     }
