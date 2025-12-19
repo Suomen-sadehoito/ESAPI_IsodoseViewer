@@ -1,6 +1,7 @@
 ﻿using VMS.TPS.Common.Model.Types;
 
-namespace ESAPI_IsodoseViewer
+// MUUTOS TÄSSÄ: Lisää .Helpers
+namespace ESAPI_IsodoseViewer.Helpers
 {
     public static class VVectorExtensions
     {

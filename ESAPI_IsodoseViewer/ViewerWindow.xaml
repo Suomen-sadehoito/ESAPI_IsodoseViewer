@@ -1,7 +1,16 @@
 ﻿<Window x:Class="ESAPI_IsodoseViewer.ViewerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ESAPI Pro Isodose Viewer" Height="900" Width="1100" Background="#111">
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:ESAPI_IsodoseViewer.ViewModels"
+        mc:Ignorable="d"
+        Title="ESAPI Pro Isodose Viewer (MVVM)" Height="900" Width="1100" Background="#111">
+    
+    <d:Window.DataContext>
+        <vm:MainViewModel/>
+    </d:Window.DataContext>
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
@@ -13,32 +22,41 @@
         </Grid.RowDefinitions>
 
         <Viewbox Grid.Column="0" Stretch="Uniform" Margin="10">
-            <Grid Name="ImageContainer" Background="Black" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Image x:Name="CtImageControl" Stretch="None"/>
-                <Canvas x:Name="IsodoseCanvas" Background="Transparent"/>
+            <Grid Background="Black" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Image Source="{Binding CtImageSource}" Stretch="None"/>
+                <Image Source="{Binding DoseImageSource}" Stretch="None"/>
             </Grid>
         </Viewbox>
 
         <StackPanel Grid.Column="1" Margin="10" Background="#222">
             <TextBlock Text="IKKUNOINTI" Foreground="Gold" FontWeight="Bold" Margin="0,10,0,10" HorizontalAlignment="Center"/>
-            <TextBlock Text="Level (L)" Foreground="White"/>
-            <Slider x:Name="LevelSlider" Minimum="-1000" Maximum="1000" Value="40" ValueChanged="Windowing_ValueChanged"/>
-            <TextBlock Text="Width (W)" Foreground="White" Margin="0,10,0,0"/>
-            <Slider x:Name="WidthSlider" Minimum="1" Maximum="3000" Value="400" ValueChanged="Windowing_ValueChanged"/>
             
+            <TextBlock Text="{Binding WindowLevel, StringFormat='Level: {0:F0}'}" Foreground="White"/>
+            <Slider Minimum="-1000" Maximum="1000" Value="{Binding WindowLevel}"/>
+            
+            <TextBlock Text="{Binding WindowWidth, StringFormat='Width: {0:F0}'}" Foreground="White" Margin="0,10,0,0"/>
+            <Slider Minimum="1" Maximum="3000" Value="{Binding WindowWidth}"/>
+
             <TextBlock Text="PRESETIT" Foreground="Gold" FontWeight="Bold" Margin="0,20,0,10" HorizontalAlignment="Center"/>
-            <Button Content="Soft Tissue" Click="Preset_SoftTissue" Margin="0,2"/>
-            <Button Content="Lung" Click="Preset_Lung" Margin="0,2"/>
-            <Button Content="Bone" Click="Preset_Bone" Margin="0,2"/>
-            <Button Content="AUTO" Click="Preset_Auto" Margin="0,10" Background="DarkGreen" Foreground="White"/>
             
-            <Button Content="VIE DEBUG-TIEDOT" Click="ExportDebugInfo" Margin="0,20" Background="DarkRed" Foreground="White"/>
+            <Button Content="Soft Tissue" Command="{Binding PresetCommand}" CommandParameter="Soft" Margin="0,2"/>
+            <Button Content="Lung" Command="{Binding PresetCommand}" CommandParameter="Lung" Margin="0,2"/>
+            <Button Content="Bone" Command="{Binding PresetCommand}" CommandParameter="Bone" Margin="0,2"/>
+            
+            <Button Content="AUTO" Command="{Binding AutoPresetCommand}" Margin="0,10" Background="DarkGreen" Foreground="White"/>
+            <Button Content="VIE DEBUG-TIEDOT" Command="{Binding DebugCommand}" Margin="0,20" Background="DarkRed" Foreground="White"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="10" Background="#333">
             <TextBlock Text="Leike (Z):" Foreground="White" VerticalAlignment="Center" Margin="10,0"/>
-            <Slider x:Name="SliceSlider" Width="600" Margin="10,0" ValueChanged="SliceSlider_ValueChanged"/>
-            <TextBlock x:Name="SliceInfo" Text="0" Foreground="White" VerticalAlignment="Center"/>
+            
+            <Slider Width="600" Margin="10,0" 
+                    Minimum="0" 
+                    Maximum="{Binding MaxSlice}" 
+                    Value="{Binding CurrentSlice}"
+                    IsSnapToTickEnabled="True"/>
+            
+            <TextBlock Text="{Binding StatusText}" Foreground="White" VerticalAlignment="Center"/>
         </StackPanel>
     </Grid>
 </Window>
