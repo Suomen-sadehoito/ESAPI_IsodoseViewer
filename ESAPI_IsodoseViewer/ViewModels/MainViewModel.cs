@@ -1,4 +1,7 @@
-﻿using System.Windows.Media;
+﻿using System;
+using System.Windows;
+using System.Windows.Threading;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ESAPI_IsodoseViewer.Mvvm;
 using ESAPI_IsodoseViewer.Services;
@@ -34,7 +37,7 @@ namespace ESAPI_IsodoseViewer.ViewModels
             get => _currentSlice;
             set
             {
-                if (SetProperty(ref _currentSlice, value)) RenderScene();
+                if (SetProperty(ref _currentSlice, value)) RequestRender();
             }
         }
 
@@ -51,7 +54,7 @@ namespace ESAPI_IsodoseViewer.ViewModels
             get => _windowLevel;
             set
             {
-                if (SetProperty(ref _windowLevel, value)) RenderScene();
+                if (SetProperty(ref _windowLevel, value)) RequestRender();
             }
         }
 
@@ -61,7 +64,7 @@ namespace ESAPI_IsodoseViewer.ViewModels
             get => _windowWidth;
             set
             {
-                if (SetProperty(ref _windowWidth, value)) RenderScene();
+                if (SetProperty(ref _windowWidth, value)) RequestRender();
             }
         }
 
@@ -106,6 +109,26 @@ namespace ESAPI_IsodoseViewer.ViewModels
             ExecuteAutoPreset();
         }
 
+        // --- STATE OF THE ART RENDER COALESCING ---
+        private bool _renderPending = false;
+
+        private void RequestRender()
+        {
+            // If a render is already queued, ignore further requests until it completes.
+            // This prevents ESAPI UI thread from freezing during rapid mouse movements.
+            if (_renderPending) return;
+            _renderPending = true;
+
+            // DispatcherPriority.Render ensures this only runs AFTER all immediate data bindings 
+            // and UI property updates have finished processing.
+            // Explicitly use System.Windows.Application to avoid ambiguous reference with VMS.TPS.Common.Model.API.Application
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                _renderPending = false;
+                RenderScene();
+            }), DispatcherPriority.Render);
+        }
+
         private void RenderScene()
         {
             if (_context.Image == null) return;
@@ -129,13 +152,9 @@ namespace ESAPI_IsodoseViewer.ViewModels
 
         private void ExecuteAutoPreset()
         {
-            // Set base values
-            _windowLevel = 40;
-            _windowWidth = 400;
-
-            OnPropertyChanged(nameof(WindowLevel));
-            OnPropertyChanged(nameof(WindowWidth));
-            RenderScene();
+            // Using public properties triggers RequestRender() automatically
+            WindowLevel = 40;
+            WindowWidth = 400;
         }
 
         private void ExecutePreset(string type)

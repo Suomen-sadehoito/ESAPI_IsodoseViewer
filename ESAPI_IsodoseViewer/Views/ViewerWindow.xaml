@@ -4,13 +4,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:ESAPI_IsodoseViewer.ViewModels"
+        xmlns:controls="clr-namespace:ESAPI_IsodoseViewer.Controls"
         mc:Ignorable="d"
-        Title="ESAPI Pro Isodose Viewer (MVVM)" Height="900" Width="1100" Background="#111">
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=False}"
+        Title="ESAPI Isodose Viewer" Height="900" Width="1100" Background="#111">
     
-    <d:Window.DataContext>
-        <vm:MainViewModel/>
-    </d:Window.DataContext>
-
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
@@ -21,15 +19,18 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Viewbox Grid.Column="0" Stretch="Uniform" Margin="10">
-            <Grid Background="Black" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Image Source="{Binding CtImageSource}" Stretch="None"/>
-                <Image Source="{Binding DoseImageSource}" Stretch="None"/>
-            </Grid>
-        </Viewbox>
+        <controls:InteractiveImageViewer 
+            Grid.Column="0" 
+            Margin="10"
+            CtImageSource="{Binding CtImageSource}"
+            DoseImageSource="{Binding DoseImageSource}"
+            CurrentSlice="{Binding CurrentSlice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+            MaxSlice="{Binding MaxSlice}"
+            WindowLevel="{Binding WindowLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+            WindowWidth="{Binding WindowWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
         <StackPanel Grid.Column="1" Margin="10" Background="#222">
-            <TextBlock Text="IKKUNOINTI" Foreground="Gold" FontWeight="Bold" Margin="0,10,0,10" HorizontalAlignment="Center"/>
+            <TextBlock Text="WINDOWING" Foreground="Gold" FontWeight="Bold" Margin="0,10,0,10" HorizontalAlignment="Center"/>
             
             <TextBlock Text="{Binding WindowLevel, StringFormat='Level: {0:F0}'}" Foreground="White"/>
             <Slider Minimum="-1000" Maximum="1000" Value="{Binding WindowLevel}"/>
@@ -37,18 +38,18 @@
             <TextBlock Text="{Binding WindowWidth, StringFormat='Width: {0:F0}'}" Foreground="White" Margin="0,10,0,0"/>
             <Slider Minimum="1" Maximum="3000" Value="{Binding WindowWidth}"/>
 
-            <TextBlock Text="PRESETIT" Foreground="Gold" FontWeight="Bold" Margin="0,20,0,10" HorizontalAlignment="Center"/>
+            <TextBlock Text="PRESETS" Foreground="Gold" FontWeight="Bold" Margin="0,20,0,10" HorizontalAlignment="Center"/>
             
             <Button Content="Soft Tissue" Command="{Binding PresetCommand}" CommandParameter="Soft" Margin="0,2"/>
             <Button Content="Lung" Command="{Binding PresetCommand}" CommandParameter="Lung" Margin="0,2"/>
             <Button Content="Bone" Command="{Binding PresetCommand}" CommandParameter="Bone" Margin="0,2"/>
             
             <Button Content="AUTO" Command="{Binding AutoPresetCommand}" Margin="0,10" Background="DarkGreen" Foreground="White"/>
-            <Button Content="VIE DEBUG-TIEDOT" Command="{Binding DebugCommand}" Margin="0,20" Background="DarkRed" Foreground="White"/>
+            <Button Content="EXPORT DEBUG INFO" Command="{Binding DebugCommand}" Margin="0,20" Background="DarkRed" Foreground="White"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="10" Background="#333">
-            <TextBlock Text="Leike (Z):" Foreground="White" VerticalAlignment="Center" Margin="10,0"/>
+            <TextBlock Text="Slice (Z):" Foreground="White" VerticalAlignment="Center" Margin="10,0"/>
             
             <Slider Width="600" Margin="10,0" 
                     Minimum="0" 

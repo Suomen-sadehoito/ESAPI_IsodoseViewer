@@ -1,0 +1,26 @@
+﻿<UserControl x:Class="ESAPI_IsodoseViewer.Controls.InteractiveImageViewer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="RootControl">
+    
+    <Grid Background="Black" 
+          ClipToBounds="True"
+          PreviewMouseWheel="OnPreviewMouseWheel"
+          PreviewMouseDown="OnPreviewMouseDown"
+          PreviewMouseMove="OnPreviewMouseMove"
+          PreviewMouseUp="OnPreviewMouseUp">
+        
+        <Grid x:Name="ImageContainer" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Grid.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="ImageScale" ScaleX="1" ScaleY="1" />
+                    <TranslateTransform x:Name="ImageTranslate" X="0" Y="0" />
+                </TransformGroup>
+            </Grid.RenderTransform>
+            
+            <Image Source="{Binding CtImageSource, ElementName=RootControl}" Stretch="None"/>
+            <Image Source="{Binding DoseImageSource, ElementName=RootControl}" Stretch="None"/>
+        </Grid>
+        
+    </Grid>
+</UserControl>
