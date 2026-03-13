@@ -73,21 +73,28 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Mvvm\RelayCommand.cs" />
-    <Compile Include="Mvvm\ObservableObject.cs" />
+    <Compile Include="Core\RelayCommand.cs" />
+    <Compile Include="Core\ObservableObject.cs" />
+    <Compile Include="Services\DebugExportService.cs" />
+    <Compile Include="Services\IDebugExportService.cs" />
+    <Compile Include="Services\IImageRenderingService.cs" />
+    <Compile Include="Services\ImageRenderingService.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
-    <Compile Include="Helpers\VVectorExtensions.cs" />
+    <Compile Include="Extensions\VVectorExtensions.cs" />
     <Compile Include="Script.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ViewerWindow.xaml.cs">
+    <Compile Include="Views\ViewerWindow.xaml.cs">
       <DependentUpon>ViewerWindow.xaml</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Page Include="ViewerWindow.xaml">
+    <Page Include="Views\ViewerWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Models\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
