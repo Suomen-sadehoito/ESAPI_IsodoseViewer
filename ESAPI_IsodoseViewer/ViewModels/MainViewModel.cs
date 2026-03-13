@@ -81,7 +81,6 @@ namespace ESAPI_IsodoseViewer.ViewModels
             _context = context;
             _plan = context.ExternalPlanSetup;
 
-            // In enterprise apps, these are injected via Dependency Injection (IoC container)
             _renderingService = new ImageRenderingService();
             _debugExportService = new DebugExportService();
 
@@ -92,6 +91,10 @@ namespace ESAPI_IsodoseViewer.ViewModels
             _currentSlice = _maxSlice / 2;
 
             _renderingService.Initialize(width, height);
+
+            // Preload all slices into memory to avoid fetching voxels on every slice change
+            StatusText = "Loading image and dose data into memory...";
+            _renderingService.PreloadData(_context.Image, _plan?.Dose);
 
             CtImageSource = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
             DoseImageSource = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);

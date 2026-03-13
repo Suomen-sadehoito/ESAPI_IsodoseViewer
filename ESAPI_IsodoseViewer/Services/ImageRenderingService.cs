@@ -9,20 +9,48 @@ namespace ESAPI_IsodoseViewer.Services
 {
     public class ImageRenderingService : IImageRenderingService
     {
-        private int[,] _ctBuffer;
         private int _width;
         private int _height;
+
+        // Caches for storing all slices in memory to improve performance
+        private int[][,] _ctCache;
+        private int[][,] _doseCache;
 
         public void Initialize(int width, int height)
         {
             _width = width;
             _height = height;
-            _ctBuffer = new int[_width, _height];
+        }
+
+        public void PreloadData(Image ctImage, Dose dose)
+        {
+            if (ctImage != null)
+            {
+                _ctCache = new int[ctImage.ZSize][,];
+                for (int z = 0; z < ctImage.ZSize; z++)
+                {
+                    _ctCache[z] = new int[ctImage.XSize, ctImage.YSize];
+                    ctImage.GetVoxels(z, _ctCache[z]);
+                }
+            }
+
+            if (dose != null)
+            {
+                _doseCache = new int[dose.ZSize][,];
+                for (int z = 0; z < dose.ZSize; z++)
+                {
+                    _doseCache[z] = new int[dose.XSize, dose.YSize];
+                    dose.GetVoxels(z, _doseCache[z]);
+                }
+            }
         }
 
         public unsafe void RenderCtImage(Image ctImage, WriteableBitmap targetBitmap, int currentSlice, double windowLevel, double windowWidth)
         {
-            ctImage.GetVoxels(currentSlice, _ctBuffer);
+            // Ensure cache is loaded and slice is within bounds
+            if (_ctCache == null || currentSlice < 0 || currentSlice >= _ctCache.Length) return;
+
+            int[,] currentCtSlice = _ctCache[currentSlice];
 
             targetBitmap.Lock();
             byte* pBackBuffer = (byte*)targetBitmap.BackBuffer;
@@ -32,7 +60,7 @@ namespace ESAPI_IsodoseViewer.Services
             double factor = 255.0 / windowWidth;
 
             // Auto-detect offset based on center pixel
-            int rawCenter = _ctBuffer[_width / 2, _height / 2];
+            int rawCenter = currentCtSlice[_width / 2, _height / 2];
             int huOffset = (rawCenter > 30000) ? 32768 : 0;
 
             for (int y = 0; y < _height; y++)
@@ -40,7 +68,7 @@ namespace ESAPI_IsodoseViewer.Services
                 uint* pRow = (uint*)(pBackBuffer + y * stride);
                 for (int x = 0; x < _width; x++)
                 {
-                    int hu = _ctBuffer[x, y] - huOffset;
+                    int hu = currentCtSlice[x, y] - huOffset;
                     double valDouble = (hu - huMin) * factor;
                     byte val = (byte)(valDouble < 0 ? 0 : (valDouble > 255 ? 255 : valDouble));
 
@@ -62,7 +90,7 @@ namespace ESAPI_IsodoseViewer.Services
             // Clear dose buffer
             for (int i = 0; i < _height * doseStride; i++) pDoseBuffer[i] = 0;
 
-            if (dose == null)
+            if (dose == null || _doseCache == null)
             {
                 targetBitmap.Unlock();
                 return "No dose available.";
@@ -87,10 +115,10 @@ namespace ESAPI_IsodoseViewer.Services
                 return $"CT Z: {currentSlice} | Dose Z: {doseSlice} (Out of range)";
             }
 
+            // Retrieve dose slice from cache instead of calling GetVoxels
             int dx = dose.XSize;
             int dy = dose.YSize;
-            int[,] doseBuffer = new int[dx, dy];
-            dose.GetVoxels(doseSlice, doseBuffer);
+            int[,] doseBuffer = _doseCache[doseSlice];
 
             DoseValue dv0 = dose.VoxelToDoseValue(0);
             DoseValue dvRef = dose.VoxelToDoseValue(10000);
