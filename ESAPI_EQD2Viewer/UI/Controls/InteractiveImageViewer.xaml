@@ -18,8 +18,40 @@
                 </TransformGroup>
             </Grid.RenderTransform>
             
-            <Image Source="{Binding CtImageSource, ElementName=RootControl}" Stretch="None"/>
-            <Image Source="{Binding DoseImageSource, ElementName=RootControl}" Stretch="None"/>
+            <!-- CT image -->
+            <Image Source="{Binding CtImageSource, ElementName=RootControl}" Stretch="None"
+                   RenderOptions.BitmapScalingMode="HighQuality"/>
+            
+            <!-- Dose bitmap overlay (Fill + Colorwash) -->
+            <Image Source="{Binding DoseImageSource, ElementName=RootControl}" Stretch="None"
+                   RenderOptions.BitmapScalingMode="HighQuality"/>
+            
+            <!-- ============================================================
+                 VECTOR ISODOSE CONTOURS (Line mode)
+                 
+                 KORJAUS: Canvas tarvitsee eksplisiittisen koon koska se ei
+                 osallistu WPF:n layout-mittaukseen. Ilman Width/Height
+                 Canvas on 0×0 pikseliä → Path-elementit eivät näy.
+                 
+                 Sidotaan PixelWidth/PixelHeight CT-bitmapista jotta Canvas
+                 on täsmälleen saman kokoinen kuin alla oleva kuva.
+                 ============================================================ -->
+            <ItemsControl ItemsSource="{Binding ContourLines, ElementName=RootControl}"
+                          IsHitTestVisible="False">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas Width="{Binding CtImageSource.PixelWidth, ElementName=RootControl}"
+                                Height="{Binding CtImageSource.PixelHeight, ElementName=RootControl}"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Path Data="{Binding Geometry}" 
+                              Stroke="{Binding Stroke}" 
+                              StrokeThickness="{Binding StrokeThickness}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </Grid>
         
     </Grid>

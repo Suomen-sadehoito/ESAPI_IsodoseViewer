@@ -1,8 +1,10 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using ESAPI_EQD2Viewer.Core.Models;
 
 namespace ESAPI_EQD2Viewer.UI.Controls
 {
@@ -73,6 +75,22 @@ namespace ESAPI_EQD2Viewer.UI.Controls
         {
             get => (double)GetValue(WindowWidthProperty);
             set => SetValue(WindowWidthProperty, value);
+        }
+
+        /// <summary>
+        /// Vector isodose contour lines (Line mode). Bound to ItemsControl in XAML.
+        /// Each item contains a frozen StreamGeometry that renders as a WPF Path element.
+        /// </summary>
+        public static readonly DependencyProperty ContourLinesProperty =
+            DependencyProperty.Register(nameof(ContourLines),
+                typeof(ObservableCollection<IsodoseContourData>),
+                typeof(InteractiveImageViewer),
+                new PropertyMetadata(null));
+
+        public ObservableCollection<IsodoseContourData> ContourLines
+        {
+            get => (ObservableCollection<IsodoseContourData>)GetValue(ContourLinesProperty);
+            set => SetValue(ContourLinesProperty, value);
         }
 
         #endregion

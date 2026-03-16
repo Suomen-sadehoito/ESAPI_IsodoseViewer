@@ -86,6 +86,7 @@
   <!-- Source files -->
   <ItemGroup>
     <Compile Include="Core\Calculations\EQD2Calculator.cs" />
+    <Compile Include="Core\Calculations\MarchingSquares.cs" />
     <Compile Include="Core\Interfaces\IDVHService.cs" />
     <Compile Include="Core\Interfaces\IDebugExportService.cs" />
     <Compile Include="Core\Interfaces\IImageRenderingService.cs" />
@@ -93,6 +94,7 @@
     <Compile Include="Core\Models\DoseDisplayMode.cs" />
     <Compile Include="Core\Models\DVHSummary.cs" />
     <Compile Include="Core\Models\EQD2Settings.cs" />
+    <Compile Include="Core\Models\IsodoseContourData.cs" />
     <Compile Include="Core\Models\IsodoseLevel.cs" />
     <Compile Include="Core\Models\RenderResult.cs" />
     <Compile Include="Core\Extensions\VVectorExtensions.cs" />

@@ -12,7 +12,6 @@
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
-        <!-- Shared styles for section headers -->
         <Style x:Key="SectionHeader" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#FFD700"/>
             <Setter Property="FontWeight" Value="Bold"/>
@@ -21,7 +20,6 @@
             <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
         
-        <!-- Dark panel border -->
         <Style x:Key="PanelBorder" TargetType="Border">
             <Setter Property="BorderBrush" Value="#444"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -31,7 +29,6 @@
             <Setter Property="Background" Value="#1a1a1a"/>
         </Style>
 
-        <!-- Small button -->
         <Style x:Key="SmallButton" TargetType="Button">
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="Margin" Value="2"/>
@@ -41,7 +38,6 @@
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
 
-        <!-- Accent button -->
         <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource SmallButton}">
             <Setter Property="Background" Value="#2d5a2d"/>
             <Setter Property="BorderBrush" Value="#3a7a3a"/>
@@ -66,11 +62,12 @@
                 <RowDefinition Height="2*" MinHeight="200"/>
             </Grid.RowDefinitions>
 
-            <!-- Isodose Viewer -->
+            <!-- Isodose Viewer — ContourLines binding added for vector line mode -->
             <controls:InteractiveImageViewer 
                 Grid.Row="0" Margin="5"
                 CtImageSource="{Binding CtImageSource}"
                 DoseImageSource="{Binding DoseImageSource}"
+                ContourLines="{Binding ContourLines}"
                 CurrentSlice="{Binding CurrentSlice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 MaxSlice="{Binding MaxSlice}"
                 WindowLevel="{Binding WindowLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -82,12 +79,10 @@
             <TabControl Grid.Row="2" Margin="5" Background="#1a1a1a" Foreground="White"
                         BorderBrush="#333" BorderThickness="1">
                 
-                <!-- DVH Chart -->
                 <TabItem Header="  DVH Chart  " Background="#222" Foreground="White">
                     <oxy:PlotView Model="{Binding PlotModel}" Background="#1a1a1a" Margin="2"/>
                 </TabItem>
 
-                <!-- Summary Table -->
                 <TabItem Header="  Summary  " Background="#222" Foreground="White">
                     <DataGrid AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                               ItemsSource="{Binding SummaryData}"
@@ -124,9 +119,6 @@
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="0,5,5,0">
             <StackPanel>
 
-                <!-- ============================================ -->
-                <!-- DOSE DISPLAY MODE (Eclipse-style selection) -->
-                <!-- ============================================ -->
                 <Border Style="{StaticResource PanelBorder}">
                     <StackPanel>
                         <TextBlock Text="DOSE DISPLAY" Style="{StaticResource SectionHeader}"/>
@@ -143,7 +135,6 @@
                                          ToolTip="Continuous jet colormap gradient"/>
                         </StackPanel>
 
-                        <!-- Colorwash-specific settings -->
                         <StackPanel Margin="0,4,0,0"
                                     Visibility="{Binding IsColorwashMode, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="{Binding ColorwashOpacity, StringFormat='Opacity: {0:P0}'}"
@@ -159,14 +150,10 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ============================================ -->
-                <!-- ISODOSE LEVELS (editable, Eclipse-like)     -->
-                <!-- ============================================ -->
                 <Border Style="{StaticResource PanelBorder}">
                     <StackPanel>
                         <TextBlock Text="ISODOSE LEVELS" Style="{StaticResource SectionHeader}"/>
 
-                        <!-- ======== NEW: Gy / % unit toggle ======== -->
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
                             <TextBlock Text="Display: " Foreground="#aaa" VerticalAlignment="Center" FontSize="11"/>
                             <RadioButton Content="  %  " IsChecked="{Binding IsPercentMode}"
@@ -176,9 +163,7 @@
                                          Foreground="White" GroupName="IsodoseUnit"
                                          ToolTip="Show levels as absolute dose in Gy"/>
                         </StackPanel>
-                        <!-- ======== END NEW ======== -->
 
-                        <!-- Preset buttons -->
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
                             <Button Content="Eclipse (10)" Style="{StaticResource SmallButton}" FontSize="10"
                                     Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Eclipse"/>
@@ -188,7 +173,6 @@
                                     Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Minimal"/>
                         </StackPanel>
 
-                        <!-- Editable isodose table -->
                         <DataGrid AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                                   MaxHeight="280" HeadersVisibility="Column"
                                   GridLinesVisibility="Horizontal"
@@ -221,7 +205,6 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <!-- Label column now shows either "107%" or "53.5 Gy" depending on mode -->
                                 <DataGridTextColumn Header="Level" Width="70"
                                     Binding="{Binding Label}">
                                     <DataGridTextColumn.ElementStyle>
@@ -249,7 +232,6 @@
                             </DataGrid.Columns>
                         </DataGrid>
                         
-                        <!-- Add / Show All / Hide All -->
                         <StackPanel Orientation="Horizontal" Margin="0,6,0,0" HorizontalAlignment="Center">
                             <Button Content="+ Add" Style="{StaticResource SmallButton}" FontSize="10"
                                     Command="{Binding AddIsodoseLevelCommand}"/>
@@ -261,9 +243,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ============================================ -->
-                <!-- EQD2 SETTINGS                               -->
-                <!-- ============================================ -->
                 <Border Style="{StaticResource PanelBorder}">
                     <StackPanel>
                         <TextBlock Text="EQD2 CONVERSION" Style="{StaticResource SectionHeader}"/>
@@ -288,9 +267,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ============================================ -->
-                <!-- STRUCTURE α/β + DVH                          -->
-                <!-- ============================================ -->
                 <Border Style="{StaticResource PanelBorder}">
                     <StackPanel>
                         <TextBlock Text="STRUCTURE DVH" Style="{StaticResource SectionHeader}"/>
@@ -343,9 +319,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ============================================ -->
-                <!-- WINDOWING                                    -->
-                <!-- ============================================ -->
                 <Border Style="{StaticResource PanelBorder}">
                     <StackPanel>
                         <TextBlock Text="WINDOWING" Style="{StaticResource SectionHeader}"/>
@@ -372,9 +345,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ============================================ -->
-                <!-- EXPORT                                       -->
-                <!-- ============================================ -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,8">
                     <Button Content="Export CSV" Style="{StaticResource SmallButton}"
                             Command="{Binding ExportCSVCommand}" Background="#2d4a6d" BorderBrush="#3a6a9d"/>

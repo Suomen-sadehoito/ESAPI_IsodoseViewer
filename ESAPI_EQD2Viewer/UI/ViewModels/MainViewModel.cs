@@ -88,6 +88,18 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             set => SetProperty(ref _statusText, value);
         }
 
+        /// <summary>
+        /// Vector isodose contour lines for Line mode.
+        /// Contains frozen StreamGeometry objects that render as WPF Path elements.
+        /// Bound to InteractiveImageViewer's ContourLines property.
+        /// </summary>
+        private ObservableCollection<IsodoseContourData> _contourLines;
+        public ObservableCollection<IsodoseContourData> ContourLines
+        {
+            get => _contourLines;
+            set => SetProperty(ref _contourLines, value);
+        }
+
         #endregion
 
         #region Dose Display Mode Properties
@@ -170,14 +182,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             set { if (value) IsodoseUnit = IsodoseUnit.Gy; }
         }
 
-        /// <summary>
-        /// Dynamic column header text for the isodose levels DataGrid.
-        /// </summary>
         public string IsodoseColumnHeader => _isodoseUnit == IsodoseUnit.Gy ? "Dose (Gy)" : "Level %";
 
-        /// <summary>
-        /// Reference dose in Gy (prescription * normalization), used for %/Gy label conversion.
-        /// </summary>
         public double ReferenceDoseGy
         {
             get
@@ -191,9 +197,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             }
         }
 
-        /// <summary>
-        /// Updates all isodose level labels when switching between % and Gy mode.
-        /// </summary>
         private void UpdateIsodoseLabels()
         {
             double refGy = ReferenceDoseGy;
@@ -317,6 +320,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             _renderingService = renderingService ?? throw new ArgumentNullException(nameof(renderingService));
             _debugExportService = debugExportService ?? throw new ArgumentNullException(nameof(debugExportService));
             _dvhService = dvhService ?? throw new ArgumentNullException(nameof(dvhService));
+
+            // Vector contour collection for Line mode
+            _contourLines = new ObservableCollection<IsodoseContourData>();
 
             // Isodose levels — start with Eclipse defaults
             var defaults = IsodoseLevel.GetEclipseDefaults();
@@ -456,6 +462,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         {
             if (_disposed || _context.Image == null) return;
 
+            // Always render CT
             _renderingService.RenderCtImage(_context.Image, CtImageSource, CurrentSlice, WindowLevel, WindowWidth);
 
             double planTotalDoseGy = GetPrescriptionGy();
@@ -472,10 +479,37 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 };
             }
 
-            StatusText = _renderingService.RenderDoseImage(
-                _context.Image, _plan?.Dose, DoseImageSource, CurrentSlice,
-                planTotalDoseGy, planNormalization, _isodoseLevelArray,
-                _doseDisplayMode, _colorwashOpacity, _colorwashMinPercent, eqd2);
+            if (_doseDisplayMode == DoseDisplayMode.Line)
+            {
+                // === LINE MODE: vector contours ===
+                // Clear dose bitmap (RenderDoseImage in Line mode just clears)
+                _renderingService.RenderDoseImage(
+                    _context.Image, _plan?.Dose, DoseImageSource, CurrentSlice,
+                    planTotalDoseGy, planNormalization, _isodoseLevelArray,
+                    _doseDisplayMode, _colorwashOpacity, _colorwashMinPercent, eqd2);
+
+                // Generate vector contours via marching squares
+                var contourResult = _renderingService.GenerateVectorContours(
+                    _context.Image, _plan?.Dose, CurrentSlice,
+                    planTotalDoseGy, planNormalization, _isodoseLevelArray, eqd2);
+
+                // Replace contour collection (triggers UI update)
+                ContourLines = new ObservableCollection<IsodoseContourData>(contourResult.Contours);
+
+                StatusText = contourResult.StatusText ?? "";
+            }
+            else
+            {
+                // === FILL / COLORWASH MODE: bitmap rendering ===
+                // Clear vector contours
+                if (_contourLines != null && _contourLines.Count > 0)
+                    ContourLines = new ObservableCollection<IsodoseContourData>();
+
+                StatusText = _renderingService.RenderDoseImage(
+                    _context.Image, _plan?.Dose, DoseImageSource, CurrentSlice,
+                    planTotalDoseGy, planNormalization, _isodoseLevelArray,
+                    _doseDisplayMode, _colorwashOpacity, _colorwashMinPercent, eqd2);
+            }
         }
 
         #endregion
@@ -524,9 +558,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 PlotModel.Series.Add(series);
             }
 
-            if (_isEQD2Enabled)
-                RecalculateAllDVH();
-
+            if (_isEQD2Enabled) RecalculateAllDVH();
             RefreshPlot();
         }
 
@@ -659,9 +691,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             }
 
             IsodoseLevels.Clear();
-            foreach (var l in levels)
-                IsodoseLevels.Add(l);
-
+            foreach (var l in levels) IsodoseLevels.Add(l);
             RebuildIsodoseArray();
             UpdateIsodoseLabels();
             RequestRender();
