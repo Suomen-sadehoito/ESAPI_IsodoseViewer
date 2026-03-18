@@ -8,85 +8,89 @@
         xmlns:oxy="http://oxyplot.org/wpf"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=False}"
-        Title="EQD2 Viewer — Re-irradiation Assessment Tool" 
-        Height="1050" Width="1500" 
+        Title="EQD2 Viewer — Re-irradiation Assessment Tool"
+        Height="1050" Width="1500"
         Background="#0C0E12"
         WindowStartupLocation="CenterScreen"
         WindowState="Maximized">
 
-    <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="/ESAPI_EQD2Viewer;component/UI/Styles/SharedStyles.xaml"/>
-            </ResourceDictionary.MergedDictionaries>
-            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        </ResourceDictionary>
-    </Window.Resources>
+	<Window.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.MergedDictionaries>
+				<ResourceDictionary Source="/ESAPI_EQD2Viewer;component/UI/Styles/SharedStyles.xaml"/>
+			</ResourceDictionary.MergedDictionaries>
+			<BooleanToVisibilityConverter x:Key="BoolToVis"/>
+		</ResourceDictionary>
+	</Window.Resources>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="Auto"/>
+		</Grid.RowDefinitions>
 
-        <!-- TOP BAR -->
-        <Border Grid.Row="0" Background="#12151B" BorderBrush="#2A3040" BorderThickness="0,0,0,1" Padding="16,8">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+		<!-- ══════════════════════════════════════════════════════════
+             TOP BAR — Patient, plan, prescription, summation indicator
+             ══════════════════════════════════════════════════════════ -->
+		<Border Grid.Row="0" Background="#12151B" BorderBrush="#2A3040" BorderThickness="0,0,0,1" Padding="16,8">
+			<Grid>
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="Auto"/>
+					<ColumnDefinition Width="Auto"/>
+					<ColumnDefinition Width="*"/>
+					<ColumnDefinition Width="Auto"/>
+				</Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="●" Foreground="#4CAF6E" FontSize="8" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <TextBlock Text="{Binding PatientDisplayName}" Foreground="#F0F2F5" FontSize="13" FontWeight="SemiBold" FontFamily="Segoe UI"/>
-                </StackPanel>
+				<StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+					<TextBlock Text="●" Foreground="#4CAF6E" FontSize="8" VerticalAlignment="Center" Margin="0,0,6,0"/>
+					<TextBlock Text="{Binding PatientDisplayName}" Foreground="#F0F2F5" FontSize="13" FontWeight="SemiBold" FontFamily="Segoe UI"/>
+				</StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="24,0,0,0" VerticalAlignment="Center">
-                    <Border Background="#1A2A3A" CornerRadius="3" Padding="8,3" Margin="0,0,8,0">
-                        <TextBlock Foreground="#4C9EEB" FontSize="11" Text="{Binding PlanDisplayLabel, Mode=OneWay}"/>
-                    </Border>
-                    <Border Background="#1A1E26" CornerRadius="3" Padding="8,3" Margin="0,0,8,0">
-                        <TextBlock Foreground="#9BA3B0" FontSize="11" Text="{Binding PrescriptionDisplayLabel, Mode=OneWay}"/>
-                    </Border>
-                    <Border Background="#1A1E26" CornerRadius="3" Padding="8,3">
-                        <TextBlock Foreground="#9BA3B0" FontSize="11" Text="{Binding FractionDisplayLabel, Mode=OneWay}"/>
-                    </Border>
-                </StackPanel>
+				<StackPanel Grid.Column="1" Orientation="Horizontal" Margin="24,0,0,0" VerticalAlignment="Center">
+					<Border Background="#1A2A3A" CornerRadius="3" Padding="8,3" Margin="0,0,8,0">
+						<TextBlock Foreground="#4C9EEB" FontSize="11" Text="{Binding PlanDisplayLabel, Mode=OneWay}"/>
+					</Border>
+					<Border Background="#1A1E26" CornerRadius="3" Padding="8,3" Margin="0,0,8,0">
+						<TextBlock Foreground="#9BA3B0" FontSize="11" Text="{Binding PrescriptionDisplayLabel, Mode=OneWay}"/>
+					</Border>
+					<Border Background="#1A1E26" CornerRadius="3" Padding="8,3">
+						<TextBlock Foreground="#9BA3B0" FontSize="11" Text="{Binding FractionDisplayLabel, Mode=OneWay}"/>
+					</Border>
+				</StackPanel>
 
-                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"
+				<StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"
                             Visibility="{Binding IsSummationActive, Converter={StaticResource BoolToVis}}">
-                    <Border Background="#1A2A1A" CornerRadius="3" Padding="10,4">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Σ" Foreground="#4CAF6E" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBlock Text="SUMMATION ACTIVE" Foreground="#4CAF6E" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </Grid>
-        </Border>
+					<Border Background="#1A2A1A" CornerRadius="3" Padding="10,4">
+						<StackPanel Orientation="Horizontal">
+							<TextBlock Text="Σ" Foreground="#4CAF6E" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+							<TextBlock Text="SUMMATION ACTIVE" Foreground="#4CAF6E" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
+						</StackPanel>
+					</Border>
+				</StackPanel>
+			</Grid>
+		</Border>
 
-        <!-- MAIN CONTENT -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="320"/>
-            </Grid.ColumnDefinitions>
+		<!-- ══════════════════════════════════════════════════════════
+             MAIN CONTENT — Image viewer (left) + Sidebar (right)
+             ══════════════════════════════════════════════════════════ -->
+		<Grid Grid.Row="1">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*"/>
+				<ColumnDefinition Width="320"/>
+			</Grid.ColumnDefinitions>
 
-            <!-- LEFT: Image + DVH -->
-            <Grid Grid.Column="0" Margin="6,6,3,6">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="3*" MinHeight="300"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="2*" MinHeight="200"/>
-                </Grid.RowDefinitions>
+			<!-- LEFT: Image + DVH -->
+			<Grid Grid.Column="0" Margin="6,6,3,6">
+				<Grid.RowDefinitions>
+					<RowDefinition Height="3*" MinHeight="300"/>
+					<RowDefinition Height="Auto"/>
+					<RowDefinition Height="2*" MinHeight="200"/>
+				</Grid.RowDefinitions>
 
-                <Border Grid.Row="0" CornerRadius="6" ClipToBounds="True" Background="#0C0E12" BorderBrush="#2A3040" BorderThickness="1">
-                    <Grid>
-                        <controls:InteractiveImageViewer
+				<Border Grid.Row="0" CornerRadius="6" ClipToBounds="True" Background="#0C0E12" BorderBrush="#2A3040" BorderThickness="1">
+					<Grid>
+						<controls:InteractiveImageViewer
                             CtImageSource="{Binding CtImageSource}"
                             DoseImageSource="{Binding DoseImageSource}"
                             ContourLines="{Binding ContourLines}"
@@ -97,294 +101,405 @@
                             WindowLevel="{Binding WindowLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             WindowWidth="{Binding WindowWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <!-- Overlay mode indicator -->
-                        <Border VerticalAlignment="Top" HorizontalAlignment="Left" Margin="12,12,0,0"
+						<!-- Overlay mode indicator -->
+						<Border VerticalAlignment="Top" HorizontalAlignment="Left" Margin="12,12,0,0"
                                 Visibility="{Binding IsOverlayVisible, Converter={StaticResource BoolToVis}}"
                                 Background="#CC0C0E12" CornerRadius="4" Padding="8,4">
-                            <TextBlock Text="{Binding OverlayModeLabel}" Foreground="#E8A838" FontSize="10" FontWeight="SemiBold"/>
-                        </Border>
+							<TextBlock Text="{Binding OverlayModeLabel}" Foreground="#E8A838" FontSize="10" FontWeight="SemiBold"/>
+						</Border>
 
-                        <!-- Dose cursor readout -->
-                        <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,12,12"
+						<!-- Dose cursor readout (single instance — removed duplicate from InteractiveImageViewer.xaml) -->
+						<Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,12,12"
                                 Background="#CC0C0E12" CornerRadius="4" Padding="8,4">
-                            <TextBlock Text="{Binding DoseCursorText}" Foreground="#F0F2F5" FontSize="11" FontFamily="Consolas"/>
-                        </Border>
-                    </Grid>
-                </Border>
+							<TextBlock Text="{Binding DoseCursorText}" Foreground="#F0F2F5" FontSize="11" FontFamily="Consolas"/>
+						</Border>
+					</Grid>
+				</Border>
 
-                <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="Transparent" Margin="0,2"/>
+				<GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="Transparent" Margin="0,2"/>
 
-                <!-- DVH + Summary tabs -->
-                <Border Grid.Row="2" CornerRadius="6" ClipToBounds="True" Background="#12151B" BorderBrush="#2A3040" BorderThickness="1">
-                    <TabControl Background="Transparent" Foreground="#F0F2F5" BorderThickness="0" Padding="0">
-                        <TabControl.Resources>
-                            <Style TargetType="TabItem" BasedOn="{StaticResource DarkTab}"/>
-                        </TabControl.Resources>
-                        <TabItem Header="DVH">
-                            <oxy:PlotView Model="{Binding PlotModel}" Background="#12151B" Margin="4"/>
-                        </TabItem>
-                        <TabItem Header="Dose Statistics">
-                            <DataGrid AutoGenerateColumns="False" IsReadOnly="True" ItemsSource="{Binding SummaryData}" Style="{StaticResource DarkGrid}">
-                                <DataGrid.ColumnHeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}"/>
-                                </DataGrid.ColumnHeaderStyle>
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Structure" Width="*" Binding="{Binding StructureId}"/>
-                                    <DataGridTextColumn Header="Plan" Width="65" Binding="{Binding PlanId}"/>
-                                    <DataGridTextColumn Header="Type" Width="70" Binding="{Binding Type}"/>
-                                    <DataGridTextColumn Header="Dmax (Gy)" Width="78" Binding="{Binding DMax, StringFormat=F2}"/>
-                                    <DataGridTextColumn Header="Dmean (Gy)" Width="82" Binding="{Binding DMean, StringFormat=F2}"/>
-                                    <DataGridTextColumn Header="Dmin (Gy)" Width="78" Binding="{Binding DMin, StringFormat=F2}"/>
-                                    <DataGridTextColumn Header="Vol (cm³)" Width="78" Binding="{Binding Volume, StringFormat=F2}"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </TabItem>
-                    </TabControl>
-                </Border>
-            </Grid>
+				<!-- DVH + Summary tabs -->
+				<Border Grid.Row="2" CornerRadius="6" ClipToBounds="True" Background="#12151B" BorderBrush="#2A3040" BorderThickness="1">
+					<TabControl Background="Transparent" Foreground="#F0F2F5" BorderThickness="0" Padding="0">
+						<TabControl.Resources>
+							<Style TargetType="TabItem" BasedOn="{StaticResource DarkTab}"/>
+						</TabControl.Resources>
+						<TabItem Header="DVH">
+							<oxy:PlotView Model="{Binding PlotModel}" Background="#12151B" Margin="4"/>
+						</TabItem>
+						<TabItem Header="Dose Statistics">
+							<DataGrid AutoGenerateColumns="False" IsReadOnly="True" ItemsSource="{Binding SummaryData}" Style="{StaticResource DarkGrid}">
+								<DataGrid.ColumnHeaderStyle>
+									<Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}"/>
+								</DataGrid.ColumnHeaderStyle>
+								<DataGrid.Columns>
+									<DataGridTextColumn Header="Structure" Width="*" Binding="{Binding StructureId}"/>
+									<DataGridTextColumn Header="Plan" Width="65" Binding="{Binding PlanId}"/>
+									<DataGridTextColumn Header="Type" Width="85" Binding="{Binding Type}"/>
+									<DataGridTextColumn Header="Dmax (Gy)" Width="78" Binding="{Binding DMax, StringFormat=F2}"/>
+									<DataGridTextColumn Header="Dmean (Gy)" Width="82" Binding="{Binding DMean, StringFormat=F2}"/>
+									<DataGridTextColumn Header="Dmin (Gy)" Width="78" Binding="{Binding DMin, StringFormat=F2}"/>
+									<DataGridTextColumn Header="Vol (cm³)" Width="78" Binding="{Binding Volume, StringFormat=F2}"/>
+								</DataGrid.Columns>
+							</DataGrid>
+						</TabItem>
+					</TabControl>
+				</Border>
+			</Grid>
 
-            <!-- RIGHT SIDEBAR -->
-            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="3,6,6,6" Padding="0,0,4,0">
-                <StackPanel>
+			<!-- ══════════════════════════════════════════════════════
+                 RIGHT SIDEBAR — All controls
+                 ══════════════════════════════════════════════════════ -->
+			<ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="3,6,6,6" Padding="0,0,4,0">
+				<StackPanel>
 
-                    <!-- DOSE DISPLAY -->
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Text="DOSE DISPLAY" Style="{StaticResource SectionHeader}"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <RadioButton Content="Line" Style="{StaticResource RadioPill}" IsChecked="{Binding IsLineMode}" GroupName="DisplayMode"/>
-                                <RadioButton Content="Fill" Style="{StaticResource RadioPill}" IsChecked="{Binding IsFillMode}" GroupName="DisplayMode"/>
-                                <RadioButton Content="Colorwash" Style="{StaticResource RadioPill}" IsChecked="{Binding IsColorwashMode}" GroupName="DisplayMode"/>
-                            </StackPanel>
-                            <StackPanel Visibility="{Binding IsColorwashMode, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <TextBlock Text="Opacity" Style="{StaticResource Label}"/>
-                                    <TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding ColorwashOpacity, StringFormat='{}{0:P0}'}"/>
-                                </Grid>
-                                <Slider Minimum="0.1" Maximum="1.0" Value="{Binding ColorwashOpacity}" TickFrequency="0.05" IsSnapToTickEnabled="True" Style="{StaticResource Slider}"/>
-                                <Grid Margin="0,2,0,0">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <TextBlock Text="Min threshold" Style="{StaticResource Label}"/>
-                                    <TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding ColorwashMinPercent, StringFormat='{}{0:P0}'}"/>
-                                </Grid>
-                                <Slider Minimum="0.0" Maximum="0.50" Value="{Binding ColorwashMinPercent}" TickFrequency="0.05" IsSnapToTickEnabled="True" Style="{StaticResource Slider}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
+					<!-- ── DOSE DISPLAY ── -->
+					<Border Style="{StaticResource Card}">
+						<StackPanel>
+							<TextBlock Text="DOSE DISPLAY" Style="{StaticResource SectionHeader}"/>
+							<StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+								<RadioButton Content="Line" Style="{StaticResource RadioPill}" IsChecked="{Binding IsLineMode}" GroupName="DisplayMode"/>
+								<RadioButton Content="Fill" Style="{StaticResource RadioPill}" IsChecked="{Binding IsFillMode}" GroupName="DisplayMode"/>
+								<RadioButton Content="Colorwash" Style="{StaticResource RadioPill}" IsChecked="{Binding IsColorwashMode}" GroupName="DisplayMode"/>
+							</StackPanel>
+							<StackPanel Visibility="{Binding IsColorwashMode, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
+								<Grid>
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="*"/>
+										<ColumnDefinition Width="Auto"/>
+									</Grid.ColumnDefinitions>
+									<TextBlock Text="Opacity" Style="{StaticResource Label}"/>
+									<TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding ColorwashOpacity, StringFormat='{}{0:P0}'}"/>
+								</Grid>
+								<Slider Minimum="0.1" Maximum="1.0" Value="{Binding ColorwashOpacity}" TickFrequency="0.05" IsSnapToTickEnabled="True" Style="{StaticResource Slider}"
+                                        ToolTip="Transparency of the dose color overlay on the CT image."/>
+								<Grid Margin="0,2,0,0">
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="*"/>
+										<ColumnDefinition Width="Auto"/>
+									</Grid.ColumnDefinitions>
+									<TextBlock Text="Min threshold" Style="{StaticResource Label}"/>
+									<TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding ColorwashMinPercent, StringFormat='{}{0:P0}'}"/>
+								</Grid>
+								<Slider Minimum="0.0" Maximum="0.50" Value="{Binding ColorwashMinPercent}" TickFrequency="0.05" IsSnapToTickEnabled="True" Style="{StaticResource Slider}"
+                                        ToolTip="Dose below this percentage of reference dose is not shown."/>
+							</StackPanel>
+						</StackPanel>
+					</Border>
 
-                    <!-- ISODOSE LEVELS -->
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Text="ISODOSE LEVELS" Style="{StaticResource SectionHeader}"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <TextBlock Text="Mode" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="10"/>
-                                <RadioButton Content="Relative (%)" Style="{StaticResource RadioPill}" IsChecked="{Binding IsRelativeMode}" GroupName="IsodoseMode" FontSize="10"/>
-                                <RadioButton Content="Absolute (Gy)" Style="{StaticResource RadioPill}" IsChecked="{Binding IsAbsoluteMode}" GroupName="IsodoseMode" FontSize="10" Margin="0"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" Visibility="{Binding IsRelativeModeSettingsVisible, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="Display" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="10"/>
-                                <RadioButton Content="%" Style="{StaticResource RadioPill}" IsChecked="{Binding IsPercentMode}" GroupName="IsodoseUnit" FontSize="10"/>
-                                <RadioButton Content="Gy" Style="{StaticResource RadioPill}" IsChecked="{Binding IsGyMode}" GroupName="IsodoseUnit" FontSize="10" Margin="0"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" Visibility="{Binding IsRelativeModeSettingsVisible, Converter={StaticResource BoolToVis}}">
-                                <Button Content="Eclipse (10)" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Eclipse"/>
-                                <Button Content="Default (4)" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Default"/>
-                                <Button Content="Minimal (3)" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Minimal"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" Visibility="{Binding IsAbsoluteMode, Converter={StaticResource BoolToVis}}">
-                                <Button Content="Re-irradiation" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="ReIrradiation"/>
-                                <Button Content="Stereotactic" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Stereotactic"/>
-                                <Button Content="Palliative" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Palliative"/>
-                            </StackPanel>
-                            <DataGrid MaxHeight="260" ItemsSource="{Binding IsodoseLevels}" Style="{StaticResource DarkGrid}" AutoGenerateColumns="False" CanUserDeleteRows="False" x:Name="IsodoseLevelGrid">
-                                <DataGrid.ColumnHeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}"/></DataGrid.ColumnHeaderStyle>
-                                <DataGrid.Columns>
-                                    <DataGridCheckBoxColumn Header="On" Width="32" Binding="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <DataGridTemplateColumn Header="Color" Width="38">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <Rectangle Width="22" Height="12" RadiusX="2" RadiusY="2" Cursor="Hand" MouseLeftButtonDown="ColorSwatch_Click">
-                                                    <Rectangle.Fill><SolidColorBrush Color="{Binding MediaColor}"/></Rectangle.Fill>
-                                                </Rectangle>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Level" Width="65" Binding="{Binding Label}" IsReadOnly="True">
-                                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#F0F2F5"/></Style></DataGridTextColumn.ElementStyle>
-                                    </DataGridTextColumn>
-                                    <DataGridTemplateColumn Header="Value" Width="55">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Foreground="#5C6475" FontSize="11">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Text" Value="{Binding Fraction, StringFormat=F3}"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding DataContext.IsAbsoluteMode, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="True">
-                                                                    <Setter Property="Text" Value="{Binding AbsoluteDoseGy, StringFormat=F1}"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                <Button Content="+ Add" Style="{StaticResource Btn}" FontSize="10" Command="{Binding AddIsodoseLevelCommand}"/>
-                                <Button Content="Show all" Style="{StaticResource Btn}" FontSize="10" Command="{Binding ToggleAllIsodoseCommand}" CommandParameter="True"/>
-                                <Button Content="Hide all" Style="{StaticResource Btn}" FontSize="10" Command="{Binding ToggleAllIsodoseCommand}" CommandParameter="False"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
+					<!-- ── ISODOSE LEVELS ── -->
+					<Border Style="{StaticResource Card}">
+						<StackPanel>
+							<TextBlock Text="ISODOSE LEVELS" Style="{StaticResource SectionHeader}"/>
+							<StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+								<TextBlock Text="Mode" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="10"/>
+								<RadioButton Content="Relative (%)" Style="{StaticResource RadioPill}" IsChecked="{Binding IsRelativeMode}" GroupName="IsodoseMode" FontSize="10"
+                                             ToolTip="Thresholds as percentage of plan reference dose."/>
+								<RadioButton Content="Absolute (Gy)" Style="{StaticResource RadioPill}" IsChecked="{Binding IsAbsoluteMode}" GroupName="IsodoseMode" FontSize="10" Margin="0"
+                                             ToolTip="Thresholds as absolute dose in Gy. Used for EQD2 summation with clinical tolerance values."/>
+							</StackPanel>
+							<StackPanel Orientation="Horizontal" Margin="0,0,0,4" Visibility="{Binding IsRelativeModeSettingsVisible, Converter={StaticResource BoolToVis}}">
+								<TextBlock Text="Display" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="10"/>
+								<RadioButton Content="%" Style="{StaticResource RadioPill}" IsChecked="{Binding IsPercentMode}" GroupName="IsodoseUnit" FontSize="10"/>
+								<RadioButton Content="Gy" Style="{StaticResource RadioPill}" IsChecked="{Binding IsGyMode}" GroupName="IsodoseUnit" FontSize="10" Margin="0"/>
+							</StackPanel>
+							<StackPanel Orientation="Horizontal" Margin="0,0,0,4" Visibility="{Binding IsRelativeModeSettingsVisible, Converter={StaticResource BoolToVis}}">
+								<Button Content="Eclipse (10)" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Eclipse"/>
+								<Button Content="Default (4)" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Default"/>
+								<Button Content="Minimal (3)" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Minimal"/>
+							</StackPanel>
+							<StackPanel Orientation="Horizontal" Margin="0,0,0,4" Visibility="{Binding IsAbsoluteMode, Converter={StaticResource BoolToVis}}">
+								<Button Content="Re-irradiation" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="ReIrradiation"
+                                        ToolTip="OAR tolerances: 45 Gy cord, 50 Gy brainstem, 60 Gy critical"/>
+								<Button Content="Stereotactic" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Stereotactic"
+                                        ToolTip="SBRT/SRS dose range up to 80 Gy"/>
+								<Button Content="Palliative" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Palliative"
+                                        ToolTip="Lower dose range for palliative retreatment"/>
+							</StackPanel>
+							<DataGrid MaxHeight="260" ItemsSource="{Binding IsodoseLevels}" Style="{StaticResource DarkGrid}" AutoGenerateColumns="False" CanUserDeleteRows="False" x:Name="IsodoseLevelGrid">
+								<DataGrid.ColumnHeaderStyle>
+									<Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}"/>
+								</DataGrid.ColumnHeaderStyle>
+								<DataGrid.Columns>
+									<DataGridCheckBoxColumn Header="On" Width="32" Binding="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"/>
+									<DataGridTemplateColumn Header="Color" Width="38">
+										<DataGridTemplateColumn.CellTemplate>
+											<DataTemplate>
+												<Rectangle Width="22" Height="12" RadiusX="2" RadiusY="2" Cursor="Hand" MouseLeftButtonDown="ColorSwatch_Click"
+                                                           ToolTip="Click to cycle color">
+													<Rectangle.Fill>
+														<SolidColorBrush Color="{Binding MediaColor}"/>
+													</Rectangle.Fill>
+												</Rectangle>
+											</DataTemplate>
+										</DataGridTemplateColumn.CellTemplate>
+									</DataGridTemplateColumn>
+									<DataGridTextColumn Header="Level" Width="65" Binding="{Binding Label}" IsReadOnly="True">
+										<DataGridTextColumn.ElementStyle>
+											<Style TargetType="TextBlock">
+												<Setter Property="Foreground" Value="#F0F2F5"/>
+											</Style>
+										</DataGridTextColumn.ElementStyle>
+									</DataGridTextColumn>
+									<DataGridTemplateColumn Header="Value" Width="55">
+										<DataGridTemplateColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Foreground="#5C6475" FontSize="11">
+													<TextBlock.Style>
+														<Style TargetType="TextBlock">
+															<Setter Property="Text" Value="{Binding Fraction, StringFormat=F3}"/>
+															<Style.Triggers>
+																<DataTrigger Binding="{Binding DataContext.IsAbsoluteMode, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="True">
+																	<Setter Property="Text" Value="{Binding AbsoluteDoseGy, StringFormat=F1}"/>
+																</DataTrigger>
+															</Style.Triggers>
+														</Style>
+													</TextBlock.Style>
+												</TextBlock>
+											</DataTemplate>
+										</DataGridTemplateColumn.CellTemplate>
+									</DataGridTemplateColumn>
+								</DataGrid.Columns>
+							</DataGrid>
+							<StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+								<Button Content="+ Add" Style="{StaticResource Btn}" FontSize="10" Command="{Binding AddIsodoseLevelCommand}"/>
+								<Button Content="Show all" Style="{StaticResource Btn}" FontSize="10" Command="{Binding ToggleAllIsodoseCommand}" CommandParameter="True"/>
+								<Button Content="Hide all" Style="{StaticResource Btn}" FontSize="10" Command="{Binding ToggleAllIsodoseCommand}" CommandParameter="False"/>
+							</StackPanel>
+						</StackPanel>
+					</Border>
 
-                    <!-- EQD2 CONVERSION -->
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Text="EQD2 CONVERSION" Style="{StaticResource SectionHeader}"/>
-                            <CheckBox Content=" Enable EQD2 isodose display" Style="{StaticResource Check}" IsChecked="{Binding IsEQD2Enabled}" Margin="0,0,0,8"/>
-                            <Grid Margin="0,0,0,2">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="Number of fractions" Style="{StaticResource Label}"/>
-                                <TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding NumberOfFractions}"/>
-                            </Grid>
-                            <Slider Minimum="1" Maximum="50" Value="{Binding NumberOfFractions}" IsSnapToTickEnabled="True" TickFrequency="1" Style="{StaticResource Slider}"/>
-                            <Grid Margin="0,4,0,2">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="Isodose α/β" Style="{StaticResource Label}"/>
-                                <TextBlock Grid.Column="1" Style="{StaticResource Value}">
-                                    <Run Text="{Binding GlobalAlphaBeta, StringFormat='{}{0:F1}'}"/><Run Text=" Gy" Foreground="#5C6475"/>
-                                </TextBlock>
-                            </Grid>
-                            <Slider Minimum="0.5" Maximum="20" Value="{Binding GlobalAlphaBeta}" TickFrequency="0.5" IsSnapToTickEnabled="True" Style="{StaticResource Slider}"/>
-                            <CheckBox Content=" Differential Dmean method" Style="{StaticResource Check}" IsChecked="{Binding UseDifferentialMethod}" Margin="0,6,0,0"/>
-                        </StackPanel>
-                    </Border>
+					<!-- ══════════════════════════════════════════════════════
+                         EQD2 ISODOSE DISPLAY
+                         Controls isodose visualization ONLY.
+                         DVH uses per-structure α/β from the DVH Analysis section.
+                         ══════════════════════════════════════════════════════ -->
+					<Border Style="{StaticResource Card}">
+						<StackPanel>
+							<TextBlock Text="EQD2 ISODOSE DISPLAY" Style="{StaticResource SectionHeader}"/>
+							<CheckBox Content=" Enable EQD2 isodose display" Style="{StaticResource Check}"
+                                      IsChecked="{Binding IsEQD2Enabled}" Margin="0,0,0,8"
+                                      ToolTip="Converts isodose lines to EQD2 equivalent dose. Does not affect DVH calculations — those use per-structure α/β values."/>
 
-                    <!-- DVH ANALYSIS (with structure contours toggle) -->
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Text="DVH ANALYSIS" Style="{StaticResource SectionHeader}"/>
-                            <Button Content="Select structures..." Style="{StaticResource BtnPrimary}" Click="SelectStructures_Click" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
-                            <CheckBox Content=" Show structure contours" Style="{StaticResource Check}" IsChecked="{Binding ShowStructureContours}" Margin="0,0,0,8"/>
-                            <DataGrid MaxHeight="150" AutoGenerateColumns="False" CanUserAddRows="False" ItemsSource="{Binding StructureSettings}" Style="{StaticResource DarkGrid}">
-                                <DataGrid.ColumnHeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}"/></DataGrid.ColumnHeaderStyle>
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Structure" IsReadOnly="True" Width="*" Binding="{Binding Id}"/>
-                                    <DataGridTextColumn Header="Type" IsReadOnly="True" Width="45" Binding="{Binding DicomType}"/>
-                                    <DataGridTextColumn Header="α/β" Width="45" Binding="{Binding AlphaBeta, UpdateSourceTrigger=PropertyChanged}">
-                                        <DataGridTextColumn.EditingElementStyle><Style TargetType="TextBox"><Setter Property="Background" Value="#222830"/><Setter Property="Foreground" Value="#F0F2F5"/></Style></DataGridTextColumn.EditingElementStyle>
-                                    </DataGridTextColumn>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                            <Button Content="Calculate EQD2 DVH" Style="{StaticResource BtnPrimary}" Command="{Binding CalculateEQD2Command}" HorizontalAlignment="Stretch" Margin="0,8,0,6"/>
-                            <StackPanel Orientation="Horizontal">
-                                <CheckBox Content=" Physical" Style="{StaticResource Check}" Margin="0,0,16,0" IsChecked="{Binding ShowPhysicalDVH}"/>
-                                <CheckBox Content=" EQD2" Style="{StaticResource Check}" IsChecked="{Binding ShowEQD2DVH}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
+							<!-- Number of fractions (single-plan) -->
+							<Grid Margin="0,0,0,2">
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="*"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+								<TextBlock Text="Plan fractions" Style="{StaticResource Label}"
+                                           ToolTip="Number of fractions for the current plan. In summation mode, each plan uses its own fraction count from the summation dialog."/>
+								<TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding NumberOfFractions}"/>
+							</Grid>
+							<Slider Minimum="1" Maximum="50" Value="{Binding NumberOfFractions}" IsSnapToTickEnabled="True" TickFrequency="1" Style="{StaticResource Slider}"
+                                    ToolTip="Fraction count for single-plan EQD2 display."/>
 
-                    <!-- PLAN SUMMATION -->
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Text="PLAN SUMMATION" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock Text="{Binding SummationInfo}" Style="{StaticResource Label}" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                            <ProgressBar Height="4" Minimum="0" Maximum="100" Value="{Binding SummationProgress, Mode=OneWay}"
+							<!-- Display α/β (isodose visualization only) -->
+							<Grid Margin="0,4,0,2">
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="*"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+								<TextBlock Text="Display α/β" Style="{StaticResource Label}"
+                                           ToolTip="α/β ratio for isodose visualization only. DVH calculations use per-structure α/β values in the DVH Analysis section below."/>
+								<TextBlock Grid.Column="1" Style="{StaticResource Value}">
+									<Run Text="{Binding DisplayAlphaBeta, StringFormat='{}{0:F1}'}"/>
+									<Run Text=" Gy" Foreground="#5C6475"/>
+								</TextBlock>
+							</Grid>
+							<Slider Minimum="0.5" Maximum="20" Value="{Binding DisplayAlphaBeta}" TickFrequency="0.5" IsSnapToTickEnabled="True" Style="{StaticResource Slider}"
+                                    ToolTip="α/β for isodose lines/colorwash. Moving this does NOT re-run summation — only updates the display."/>
+
+							<!-- α/β preset buttons -->
+							<StackPanel Orientation="Horizontal" Margin="0,2,0,4">
+								<TextBlock Text="Presets:" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="10"/>
+								<Button Content="α/β = 3" Style="{StaticResource Btn}" FontSize="9"
+                                        Command="{Binding SetDisplayAlphaBetaCommand}" CommandParameter="3"
+                                        ToolTip="Late-responding tissue (spinal cord α/β ≈ 2–3 Gy, brain, kidney, lung)"/>
+								<Button Content="α/β = 10" Style="{StaticResource Btn}" FontSize="9"
+                                        Command="{Binding SetDisplayAlphaBetaCommand}" CommandParameter="10"
+                                        ToolTip="Tumor / early-responding tissue (most carcinomas α/β ≈ 10 Gy)"/>
+							</StackPanel>
+
+							<CheckBox Content=" Differential Dmean method" Style="{StaticResource Check}"
+                                      IsChecked="{Binding UseDifferentialMethod}" Margin="0,2,0,0"
+                                      ToolTip="More accurate: computes mean EQD2 from differential DVH bins instead of converting physical Dmean directly. Accounts for dose heterogeneity within the structure."/>
+						</StackPanel>
+					</Border>
+
+					<!-- ══════════════════════════════════════════════════════
+                         DVH ANALYSIS
+                         Per-structure α/β is the master for all DVH calculations,
+                         including summation DVH.
+                         ══════════════════════════════════════════════════════ -->
+					<Border Style="{StaticResource Card}">
+						<StackPanel>
+							<TextBlock Text="DVH ANALYSIS" Style="{StaticResource SectionHeader}"/>
+							<Button Content="Select structures..." Style="{StaticResource BtnPrimary}" Click="SelectStructures_Click" HorizontalAlignment="Stretch" Margin="0,0,0,8"
+                                    ToolTip="Choose structures from the plan's structure set for DVH calculation."/>
+							<CheckBox Content=" Show structure contours" Style="{StaticResource Check}"
+                                      IsChecked="{Binding ShowStructureContours}" Margin="0,0,0,8"
+                                      ToolTip="Display anatomical structure outlines on the CT image."/>
+
+							<!-- Per-structure α/β table -->
+							<TextBlock Text="Per-structure α/β — used for all DVH calculations"
+                                       Foreground="#5C6475" FontSize="9.5" Margin="0,0,0,4"
+                                       ToolTip="Each structure's α/β ratio is used for EQD2 DVH conversion, including summation DVH. Typical: 2–3 Gy for late OARs, 10 Gy for tumors."/>
+							<DataGrid MaxHeight="150" AutoGenerateColumns="False" CanUserAddRows="False" ItemsSource="{Binding StructureSettings}" Style="{StaticResource DarkGrid}">
+								<DataGrid.ColumnHeaderStyle>
+									<Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}"/>
+								</DataGrid.ColumnHeaderStyle>
+								<DataGrid.Columns>
+									<DataGridTextColumn Header="Structure" IsReadOnly="True" Width="*" Binding="{Binding Id}"/>
+									<DataGridTextColumn Header="Type" IsReadOnly="True" Width="45" Binding="{Binding DicomType}"/>
+									<DataGridTextColumn Header="α/β" Width="45" Binding="{Binding AlphaBeta, UpdateSourceTrigger=PropertyChanged}">
+										<DataGridTextColumn.EditingElementStyle>
+											<Style TargetType="TextBox">
+												<Setter Property="Background" Value="#222830"/>
+												<Setter Property="Foreground" Value="#F0F2F5"/>
+											</Style>
+										</DataGridTextColumn.EditingElementStyle>
+									</DataGridTextColumn>
+								</DataGrid.Columns>
+							</DataGrid>
+
+							<Button Content="Calculate EQD2 DVH" Style="{StaticResource BtnPrimary}" Command="{Binding CalculateEQD2Command}" HorizontalAlignment="Stretch" Margin="0,8,0,6"
+                                    ToolTip="Calculates EQD2 DVH curves using per-structure α/β values above. In summation mode, correctly applies each plan's own fractionation schedule."/>
+
+							<StackPanel Orientation="Horizontal">
+								<CheckBox Content=" Physical" Style="{StaticResource Check}" Margin="0,0,16,0" IsChecked="{Binding ShowPhysicalDVH}"/>
+								<CheckBox Content=" EQD2" Style="{StaticResource Check}" IsChecked="{Binding ShowEQD2DVH}"/>
+							</StackPanel>
+						</StackPanel>
+					</Border>
+
+					<!-- ══════════════════════════════════════════════════════
+                         PLAN SUMMATION
+                         ══════════════════════════════════════════════════════ -->
+					<Border Style="{StaticResource Card}">
+						<StackPanel>
+							<TextBlock Text="PLAN SUMMATION" Style="{StaticResource SectionHeader}"/>
+							<TextBlock Text="{Binding SummationInfo}" Style="{StaticResource Label}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+
+							<!-- Summation α/β info (visible only when summation active) -->
+							<TextBlock Text="{Binding SummationAlphaBetaLabel}" Foreground="#4CAF6E" FontSize="10" Margin="0,0,0,6"
+                                       Visibility="{Binding IsSummationActive, Converter={StaticResource BoolToVis}}"/>
+
+							<ProgressBar Height="4" Minimum="0" Maximum="100" Value="{Binding SummationProgress, Mode=OneWay}"
                                          Visibility="{Binding IsSummationComputing, Converter={StaticResource BoolToVis}}"
                                          Foreground="#4CAF6E" Background="#1A1E26" BorderThickness="0" Margin="0,0,0,8"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                                <Button Content="Setup summation..." Style="{StaticResource BtnPrimary}" Command="{Binding OpenSummationDialogCommand}"/>
-                                <Button Content="Cancel" Style="{StaticResource BtnDanger}" Command="{Binding CancelSummationCommand}" Visibility="{Binding IsSummationComputing, Converter={StaticResource BoolToVis}}"/>
-                                <Button Content="Clear" Style="{StaticResource Btn}" Command="{Binding ClearSummationCommand}"/>
-                            </StackPanel>
+							<StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+								<Button Content="Setup summation..." Style="{StaticResource BtnPrimary}" Command="{Binding OpenSummationDialogCommand}"
+                                        ToolTip="Configure multi-plan dose summation with plan selection, registrations, and fractionation."/>
+								<Button Content="Cancel" Style="{StaticResource BtnDanger}" Command="{Binding CancelSummationCommand}" Visibility="{Binding IsSummationComputing, Converter={StaticResource BoolToVis}}"/>
+								<Button Content="Clear" Style="{StaticResource Btn}" Command="{Binding ClearSummationCommand}"
+                                        ToolTip="Remove summation results and return to single-plan viewing."/>
+							</StackPanel>
 
-                            <!-- Registration verification -->
-                            <StackPanel Visibility="{Binding IsSummationActive, Converter={StaticResource BoolToVis}}" Margin="0,10,0,0">
-                                <Border BorderBrush="#2A3040" BorderThickness="0,1,0,0" Padding="0,8,0,0">
-                                    <StackPanel>
-                                        <TextBlock Text="REGISTRATION CHECK" Foreground="#5C6475" FontSize="10" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                            <RadioButton Content="Off" Style="{StaticResource RadioPill}" IsChecked="{Binding IsOverlayOff}" GroupName="OverlayMode" FontSize="10"/>
-                                            <RadioButton Content="Checkerboard" Style="{StaticResource RadioPill}" IsChecked="{Binding IsOverlayCheckerboard}" GroupName="OverlayMode" FontSize="10"/>
-                                            <RadioButton Content="Blend" Style="{StaticResource RadioPill}" IsChecked="{Binding IsOverlayBlend}" GroupName="OverlayMode" FontSize="10" Margin="0"/>
-                                        </StackPanel>
-                                        <StackPanel Visibility="{Binding IsOverlayVisible, Converter={StaticResource BoolToVis}}">
-                                            <ComboBox ItemsSource="{Binding OverlayPlanOptions}" SelectedValue="{Binding SelectedOverlayPlanLabel}" Style="{StaticResource DarkCombo}" Margin="0,0,0,4"/>
-                                            <Grid Visibility="{Binding IsOverlayBlend, Converter={StaticResource BoolToVis}}">
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                <TextBlock Text="Blend opacity" Style="{StaticResource Label}" FontSize="10"/>
-                                                <TextBlock Grid.Column="1" Style="{StaticResource Value}" FontSize="10" Text="{Binding OverlayOpacity, StringFormat='{}{0:P0}'}"/>
-                                            </Grid>
-                                            <Slider Minimum="0.1" Maximum="0.9" Value="{Binding OverlayOpacity}" TickFrequency="0.05" IsSnapToTickEnabled="True"
+							<!-- Registration verification -->
+							<StackPanel Visibility="{Binding IsSummationActive, Converter={StaticResource BoolToVis}}" Margin="0,10,0,0">
+								<Border BorderBrush="#2A3040" BorderThickness="0,1,0,0" Padding="0,8,0,0">
+									<StackPanel>
+										<TextBlock Text="REGISTRATION CHECK" Foreground="#5C6475" FontSize="10" FontWeight="SemiBold" Margin="0,0,0,6"/>
+										<StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+											<RadioButton Content="Off" Style="{StaticResource RadioPill}" IsChecked="{Binding IsOverlayOff}" GroupName="OverlayMode" FontSize="10"/>
+											<RadioButton Content="Checkerboard" Style="{StaticResource RadioPill}" IsChecked="{Binding IsOverlayCheckerboard}" GroupName="OverlayMode" FontSize="10"
+                                                         ToolTip="Alternating blocks from reference and secondary CT for edge alignment verification."/>
+											<RadioButton Content="Blend" Style="{StaticResource RadioPill}" IsChecked="{Binding IsOverlayBlend}" GroupName="OverlayMode" FontSize="10" Margin="0"
+                                                         ToolTip="Alpha-blended overlay of secondary CT on reference CT."/>
+										</StackPanel>
+										<StackPanel Visibility="{Binding IsOverlayVisible, Converter={StaticResource BoolToVis}}">
+											<ComboBox ItemsSource="{Binding OverlayPlanOptions}" SelectedValue="{Binding SelectedOverlayPlanLabel}" Style="{StaticResource DarkCombo}" Margin="0,0,0,4"/>
+											<Grid Visibility="{Binding IsOverlayBlend, Converter={StaticResource BoolToVis}}">
+												<Grid.ColumnDefinitions>
+													<ColumnDefinition Width="*"/>
+													<ColumnDefinition Width="Auto"/>
+												</Grid.ColumnDefinitions>
+												<TextBlock Text="Blend opacity" Style="{StaticResource Label}" FontSize="10"/>
+												<TextBlock Grid.Column="1" Style="{StaticResource Value}" FontSize="10" Text="{Binding OverlayOpacity, StringFormat='{}{0:P0}'}"/>
+											</Grid>
+											<Slider Minimum="0.1" Maximum="0.9" Value="{Binding OverlayOpacity}" TickFrequency="0.05" IsSnapToTickEnabled="True"
                                                     Visibility="{Binding IsOverlayBlend, Converter={StaticResource BoolToVis}}" Style="{StaticResource Slider}"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
+										</StackPanel>
+									</StackPanel>
+								</Border>
+							</StackPanel>
+						</StackPanel>
+					</Border>
 
-                    <!-- CT WINDOWING -->
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Text="CT WINDOWING" Style="{StaticResource SectionHeader}"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="Window level" Style="{StaticResource Label}"/>
-                                <TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding WindowLevel, StringFormat='{}{0:F0}'}"/>
-                            </Grid>
-                            <Slider Minimum="-1000" Maximum="1000" Value="{Binding WindowLevel}" Style="{StaticResource Slider}"/>
-                            <Grid Margin="0,2,0,0">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="Window width" Style="{StaticResource Label}"/>
-                                <TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding WindowWidth, StringFormat='{}{0:F0}'}"/>
-                            </Grid>
-                            <Slider Minimum="1" Maximum="3000" Value="{Binding WindowWidth}" Style="{StaticResource Slider}"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <Button Content="Soft tissue" Style="{StaticResource Btn}" FontSize="10" Command="{Binding PresetCommand}" CommandParameter="Soft"/>
-                                <Button Content="Lung" Style="{StaticResource Btn}" FontSize="10" Command="{Binding PresetCommand}" CommandParameter="Lung"/>
-                                <Button Content="Bone" Style="{StaticResource Btn}" FontSize="10" Command="{Binding PresetCommand}" CommandParameter="Bone"/>
-                                <Button Content="Auto" Style="{StaticResource BtnAccent}" FontSize="10" Command="{Binding AutoPresetCommand}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
+					<!-- ── CT WINDOWING ── -->
+					<Border Style="{StaticResource Card}">
+						<StackPanel>
+							<TextBlock Text="CT WINDOWING" Style="{StaticResource SectionHeader}"/>
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="*"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+								<TextBlock Text="Window level" Style="{StaticResource Label}"/>
+								<TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding WindowLevel, StringFormat='{}{0:F0}'}"/>
+							</Grid>
+							<Slider Minimum="-1000" Maximum="1000" Value="{Binding WindowLevel}" Style="{StaticResource Slider}"
+                                    ToolTip="Center of the HU display range. Left-click drag on the image also adjusts windowing."/>
+							<Grid Margin="0,2,0,0">
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="*"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+								<TextBlock Text="Window width" Style="{StaticResource Label}"/>
+								<TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding WindowWidth, StringFormat='{}{0:F0}'}"/>
+							</Grid>
+							<Slider Minimum="1" Maximum="3000" Value="{Binding WindowWidth}" Style="{StaticResource Slider}"
+                                    ToolTip="Width of the HU display range."/>
+							<StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+								<Button Content="Soft tissue" Style="{StaticResource Btn}" FontSize="10" Command="{Binding PresetCommand}" CommandParameter="Soft"
+                                        ToolTip="WL 40 / WW 400"/>
+								<Button Content="Lung" Style="{StaticResource Btn}" FontSize="10" Command="{Binding PresetCommand}" CommandParameter="Lung"
+                                        ToolTip="WL -600 / WW 1600"/>
+								<Button Content="Bone" Style="{StaticResource Btn}" FontSize="10" Command="{Binding PresetCommand}" CommandParameter="Bone"
+                                        ToolTip="WL 300 / WW 1500"/>
+								<Button Content="Auto" Style="{StaticResource BtnAccent}" FontSize="10" Command="{Binding AutoPresetCommand}"/>
+							</StackPanel>
+						</StackPanel>
+					</Border>
 
-                    <!-- TOOLS -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,12">
-                        <Button Content="Export CSV" Style="{StaticResource BtnAccent}" Command="{Binding ExportCSVCommand}" FontSize="10"/>
-                        <Button Content="Debug log" Style="{StaticResource Btn}" Command="{Binding DebugCommand}" FontSize="10"/>
-                    </StackPanel>
-                </StackPanel>
-            </ScrollViewer>
-        </Grid>
+					<!-- ── TOOLS ── -->
+					<StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,12">
+						<Button Content="Export CSV" Style="{StaticResource BtnAccent}" Command="{Binding ExportCSVCommand}" FontSize="10"
+                                ToolTip="Export dose statistics table to a CSV file for clinical documentation."/>
+						<Button Content="Debug log" Style="{StaticResource Btn}" Command="{Binding DebugCommand}" FontSize="10"
+                                ToolTip="Save diagnostic information (geometry, scaling, slice mapping) to Desktop."/>
+					</StackPanel>
+				</StackPanel>
+			</ScrollViewer>
+		</Grid>
 
-        <!-- BOTTOM BAR -->
-        <Border Grid.Row="2" Background="#12151B" BorderBrush="#2A3040" BorderThickness="0,1,0,0" Padding="16,6">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+		<!-- ══════════════════════════════════════════════════════════
+             BOTTOM BAR — Slice navigation + status
+             ══════════════════════════════════════════════════════════ -->
+		<Border Grid.Row="2" Background="#12151B" BorderBrush="#2A3040" BorderThickness="0,1,0,0" Padding="16,6">
+			<Grid>
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="Auto"/>
+					<ColumnDefinition Width="*"/>
+					<ColumnDefinition Width="Auto"/>
+				</Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Slice" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Foreground="#F0F2F5" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" MinWidth="28" FontFamily="Consolas">
-                        <Run Text="{Binding CurrentSlice, Mode=OneWay}"/>
-                    </TextBlock>
-                    <TextBlock Foreground="#5C6475" VerticalAlignment="Center" FontSize="11" FontFamily="Consolas" Margin="2,0,16,0">
-                        <Run Text="/ "/><Run Text="{Binding MaxSlice, Mode=OneWay}"/>
-                    </TextBlock>
-                </StackPanel>
+				<StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+					<TextBlock Text="Slice" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+					<TextBlock Foreground="#F0F2F5" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" MinWidth="28" FontFamily="Consolas">
+						<Run Text="{Binding CurrentSlice, Mode=OneWay}"/>
+					</TextBlock>
+					<TextBlock Foreground="#5C6475" VerticalAlignment="Center" FontSize="11" FontFamily="Consolas" Margin="2,0,16,0">
+						<Run Text="/ "/>
+						<Run Text="{Binding MaxSlice, Mode=OneWay}"/>
+					</TextBlock>
+				</StackPanel>
 
-                <Slider Grid.Column="1" Minimum="0" Maximum="{Binding MaxSlice}" Value="{Binding CurrentSlice}" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center" Margin="0,0,16,0"/>
+				<Slider Grid.Column="1" Minimum="0" Maximum="{Binding MaxSlice}" Value="{Binding CurrentSlice}" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center" Margin="0,0,16,0"/>
 
-                <TextBlock Grid.Column="2" Text="{Binding StatusText}" Style="{StaticResource Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="550" FontSize="10" FontFamily="Consolas"/>
-            </Grid>
-        </Border>
-    </Grid>
+				<TextBlock Grid.Column="2" Text="{Binding StatusText}" Style="{StaticResource Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="550" FontSize="10" FontFamily="Consolas"/>
+			</Grid>
+		</Border>
+	</Grid>
 </Window>

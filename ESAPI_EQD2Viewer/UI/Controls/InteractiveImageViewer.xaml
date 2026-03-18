@@ -30,7 +30,7 @@
             <Image Source="{Binding DoseImageSource, ElementName=RootControl}" Stretch="None"
                    RenderOptions.BitmapScalingMode="HighQuality"/>
 
-            <!-- Structure contours (NEW) -->
+            <!-- Structure contours -->
             <ItemsControl ItemsSource="{Binding StructureContourLines, ElementName=RootControl}"
                           IsHitTestVisible="False">
                 <ItemsControl.ItemsPanel>
@@ -68,13 +68,12 @@
             </ItemsControl>
         </Grid>
 
-        <!-- Dose cursor readout (NEW) -->
-        <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,12,12"
-                Background="#CC0C0E12" CornerRadius="4" Padding="8,4"
-                Visibility="{Binding DoseCursorVisibility, ElementName=RootControl}">
-            <TextBlock Text="{Binding DoseCursorText, ElementName=RootControl}"
-                       Foreground="#F0F2F5" FontSize="11" FontFamily="Consolas"/>
-        </Border>
+        <!-- 
+            FIX: Dose cursor readout removed from here.
+            Single dose readout is now in MainWindow.xaml only,
+            bound to MainViewModel.DoseCursorText.
+            Having it in both places caused a duplicate display.
+        -->
 
     </Grid>
 </UserControl>

@@ -16,13 +16,23 @@ using VMS.TPS.Common.Model.Types;
 namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
     /// <summary>
-    /// Main view model — split into partial classes by responsibility:
-    ///   MainViewModel.cs              — Core: fields, constructor, Dispose
-    ///   MainViewModel.Properties.cs   — All bindable properties
-    ///   MainViewModel.Rendering.cs    — CT/dose/structure rendering pipeline
-    ///   MainViewModel.DVH.cs          — DVH management, structure settings, plot
-    ///   MainViewModel.Summation.cs    — Multi-plan dose summation + summation DVH
-    ///   MainViewModel.Commands.cs     — All RelayCommand handlers
+    /// Main view model for the EQD2 Viewer re-irradiation assessment tool.
+    /// 
+    /// Split into partial classes by responsibility:
+    ///   .cs              — Core lifecycle: constructor, dispose, shared state, isodose management
+    ///   .Properties.cs   — All bindable properties (WPF data binding targets)
+    ///   .Rendering.cs    — CT/dose/structure rendering pipeline (UI thread only)
+    ///   .DVH.cs          — DVH calculation, structure settings, OxyPlot series management
+    ///   .Summation.cs    — Multi-plan dose summation + per-structure EQD2 DVH
+    ///   .Commands.cs     — All RelayCommand handlers (user actions from UI)
+    /// 
+    /// α/β architecture:
+    ///   DisplayAlphaBeta  — controls isodose visualization only (slider in sidebar)
+    ///   Per-structure α/β — controls DVH calculations (editable in structure settings grid)
+    ///   Summation α/β     — set at summation dialog; display α/β syncs initially
+    /// 
+    /// Lifetime: Disposed when MainWindow closes. Must be disposed before ESAPI
+    /// ScriptContext goes out of scope.
     /// </summary>
     public partial class MainViewModel : ObservableObject, IDisposable
     {
@@ -134,7 +144,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
             PlotModel.Axes.Add(new LinearAxis
             {
-                Position = AxisPosition.Bottom, Title = "Dose (Gy)", Minimum = 0,
+                Position = AxisPosition.Bottom,
+                Title = "Dose (Gy)",
+                Minimum = 0,
                 TitleColor = OxyColor.FromRgb(155, 163, 176),
                 TextColor = OxyColor.FromRgb(155, 163, 176),
                 TicklineColor = OxyColor.FromRgb(92, 100, 117),
@@ -146,8 +158,10 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
             PlotModel.Axes.Add(new LinearAxis
             {
-                Position = AxisPosition.Left, Title = "Volume (%)",
-                Minimum = 0, Maximum = 101,
+                Position = AxisPosition.Left,
+                Title = "Volume (%)",
+                Minimum = 0,
+                Maximum = 101,
                 TitleColor = OxyColor.FromRgb(155, 163, 176),
                 TextColor = OxyColor.FromRgb(155, 163, 176),
                 TicklineColor = OxyColor.FromRgb(92, 100, 117),
@@ -171,7 +185,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             if (_disposed) return;
             _disposed = true;
             _summationCts?.Cancel();
-            _alphaBetaDebounce?.Stop();
+            _recomputeCts?.Cancel();
+            _displayAlphaBetaDebounce?.Stop();
             _renderingService?.Dispose();
             _summationService?.Dispose();
         }
@@ -184,22 +199,38 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         }
     }
 
+    /// <summary>
+    /// Per-structure α/β setting for DVH EQD2 calculations.
+    /// Default: 10 Gy for targets (PTV/CTV/GTV), 3 Gy for organs at risk.
+    /// </summary>
     public class StructureAlphaBetaItem : INotifyPropertyChanged
     {
         public Structure Structure { get; }
         private double _alphaBeta;
         public string Id => Structure.Id;
         public string DicomType => Structure.DicomType;
+
+        /// <summary>
+        /// Tissue-specific α/β ratio [Gy].
+        /// Used for both single-plan and summation DVH EQD2 calculations.
+        /// </summary>
         public double AlphaBeta
         {
             get => _alphaBeta;
-            set { _alphaBeta = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AlphaBeta))); }
+            set
+            {
+                if (value <= 0) value = 0.5; // Prevent clinically invalid values
+                _alphaBeta = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AlphaBeta)));
+            }
         }
+
         public StructureAlphaBetaItem(Structure structure, double alphaBeta)
         {
             Structure = structure;
             _alphaBeta = alphaBeta;
         }
+
         public event PropertyChangedEventHandler PropertyChanged;
     }
 }

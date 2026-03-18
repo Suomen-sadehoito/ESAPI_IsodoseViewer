@@ -22,7 +22,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         private ISummationService _summationService;
         private SummationConfig _activeSummationConfig;
         private CancellationTokenSource _summationCts;
-        private DispatcherTimer _alphaBetaDebounce;
+        private CancellationTokenSource _recomputeCts;
+        private DispatcherTimer _displayAlphaBetaDebounce;
 
         private bool _isSummationActive;
         public bool IsSummationActive
@@ -52,12 +53,17 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         }
 
         [RelayCommand]
-        private void CancelSummation() => _summationCts?.Cancel();
+        private void CancelSummation()
+        {
+            _summationCts?.Cancel();
+            _recomputeCts?.Cancel();
+        }
 
         [RelayCommand]
         private void ClearSummation()
         {
             _summationCts?.Cancel();
+            _recomputeCts?.Cancel();
             _summationService?.Dispose();
             _summationService = null;
             _activeSummationConfig = null;
@@ -65,6 +71,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             IsSummationComputing = false;
             SummationProgress = 0;
             SummationInfo = "No summation active";
+            SummationAlphaBetaLabel = "";
             CurrentOverlayMode = OverlayMode.Off;
             OverlayPlanOptions.Clear();
             ClearSummationDVH();
@@ -75,6 +82,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         private async Task ExecuteSummationAsync(SummationConfig config)
         {
             _summationCts?.Cancel();
+            _recomputeCts?.Cancel();
             _summationCts = new CancellationTokenSource();
             var ct = _summationCts.Token;
             IsSummationComputing = true;
@@ -102,17 +110,24 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 {
                     _activeSummationConfig = config;
                     IsSummationActive = true;
+
                     string ml = config.Method == SummationMethod.EQD2 ? "EQD2" : "Physical";
                     SummationInfo = $"{ml} sum: {config.Plans.Count} plans | Max: {result.MaxDoseGy:F2} Gy | Ref: {result.TotalReferenceDoseGy:F2} Gy";
                     StatusText = result.StatusMessage;
-                    _globalAlphaBeta = config.GlobalAlphaBeta;
-                    OnPropertyChanged(nameof(GlobalAlphaBeta));
+
+                    // Sync display α/β with the summation's α/β (informational)
+                    _displayAlphaBeta = config.GlobalAlphaBeta;
+                    OnPropertyChanged(nameof(DisplayAlphaBeta));
+                    SummationAlphaBetaLabel = $"Summation computed with α/β = {config.GlobalAlphaBeta:F1} Gy";
+
                     if (_isodoseMode != IsodoseMode.Absolute) LoadIsodosePreset("ReIrradiation");
 
                     OverlayPlanOptions.Clear();
-                    foreach (var plan in config.Plans.Where(p => !p.IsReference)) OverlayPlanOptions.Add(plan.DisplayLabel);
+                    foreach (var plan in config.Plans.Where(p => !p.IsReference))
+                        OverlayPlanOptions.Add(plan.DisplayLabel);
                     if (OverlayPlanOptions.Count > 0) SelectedOverlayPlanLabel = OverlayPlanOptions[0];
 
+                    // Calculate DVH with per-structure α/β values
                     CalculateSummationDVH(result.MaxDoseGy);
                     RequestRender();
                 }
@@ -128,25 +143,76 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             finally { IsSummationComputing = false; }
         }
 
-        internal void ResummatIfActive()
+        // ═══════════════════════════════════════════
+        // Display α/β recomputation (fast, no ESAPI)
+        // ═══════════════════════════════════════════
+
+        /// <summary>
+        /// Called when DisplayAlphaBeta slider changes while summation is active.
+        /// Debounces, then recomputes the EQD2 display sum from stored per-plan physical doses.
+        /// This is MUCH cheaper than full re-summation (Phase 1 + Phase 2).
+        /// </summary>
+        internal void RecomputeDisplayEQD2IfActive()
         {
-            if (!_isSummationActive || _activeSummationConfig == null) return;
-            if (_alphaBetaDebounce == null)
+            if (!_isSummationActive || _summationService == null) return;
+
+            if (_displayAlphaBetaDebounce == null)
             {
-                _alphaBetaDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(RenderConstants.AlphaBetaDebounceMs) };
-                _alphaBetaDebounce.Tick += async (s, e) =>
+                _displayAlphaBetaDebounce = new DispatcherTimer
                 {
-                    _alphaBetaDebounce.Stop();
-                    if (_activeSummationConfig != null && _isSummationActive)
-                    { _activeSummationConfig.GlobalAlphaBeta = _globalAlphaBeta; await ExecuteSummationAsync(_activeSummationConfig); }
+                    Interval = TimeSpan.FromMilliseconds(RenderConstants.AlphaBetaDebounceMs)
+                };
+                _displayAlphaBetaDebounce.Tick += async (s, e) =>
+                {
+                    _displayAlphaBetaDebounce.Stop();
+                    await RecomputeDisplayEQD2Core();
                 };
             }
-            _alphaBetaDebounce.Stop();
-            _alphaBetaDebounce.Start();
+            _displayAlphaBetaDebounce.Stop();
+            _displayAlphaBetaDebounce.Start();
         }
 
-        // ═══ SUMMATION DVH ═══
+        private async Task RecomputeDisplayEQD2Core()
+        {
+            if (_summationService == null || !_isSummationActive) return;
 
+            _recomputeCts?.Cancel();
+            _recomputeCts = new CancellationTokenSource();
+            var ct = _recomputeCts.Token;
+
+            try
+            {
+                IsSummationComputing = true;
+                SummationInfo = $"Updating display α/β = {_displayAlphaBeta:F1} Gy...";
+
+                var progress = new Progress<int>(pct => SummationProgress = pct);
+                var result = await _summationService.RecomputeEQD2DisplayAsync(
+                    _displayAlphaBeta, progress, ct);
+
+                if (result.Success)
+                {
+                    SummationInfo = result.StatusMessage;
+                    StatusText = result.StatusMessage;
+                    RequestRender();
+                }
+            }
+            catch (OperationCanceledException) { /* Normal during rapid slider movement */ }
+            catch (Exception ex)
+            {
+                SimpleLogger.Error("RecomputeDisplayEQD2 failed", ex);
+            }
+            finally { IsSummationComputing = false; }
+        }
+
+        // ═══════════════════════════════════════════
+        // SUMMATION DVH — Per-structure α/β
+        // ═══════════════════════════════════════════
+
+        /// <summary>
+        /// Calculates DVH for each selected structure using that structure's own α/β value.
+        /// Uses ComputeStructureEQD2DVH which correctly applies per-plan fractionation
+        /// with the structure-specific α/β for each plan's contribution.
+        /// </summary>
         private void CalculateSummationDVH(double maxDoseGy)
         {
             if (_summationService == null || !_summationService.HasSummedDose) return;
@@ -154,11 +220,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             if (structureIds == null || structureIds.Count == 0) return;
 
             var selectedIds = _dvhCache.Select(c => c.Structure.Id).ToHashSet();
-            int sliceCount = _summationService.SliceCount;
-            double[][] summedSlices = new double[sliceCount][];
-            for (int z = 0; z < sliceCount; z++) summedSlices[z] = _summationService.GetSummedSlice(z);
             double voxelVolCc = _summationService.GetVoxelVolumeCc();
-            string methodLabel = _activeSummationConfig?.Method == SummationMethod.EQD2 ? "EQD2 Sum" : "Physical Sum";
+            int sliceCount = _summationService.SliceCount;
+            bool isEqd2Sum = _activeSummationConfig?.Method == SummationMethod.EQD2;
 
             ClearSummationDVH();
 
@@ -166,17 +230,44 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             {
                 if (!selectedIds.Contains(structureId)) continue;
 
-                bool[][] masks = new bool[sliceCount][];
-                for (int z = 0; z < sliceCount; z++) masks[z] = _summationService.GetStructureMask(structureId, z);
+                // ── KEY CHANGE: use per-structure α/β ──
+                var structureSetting = StructureSettings.FirstOrDefault(s => s.Id == structureId);
+                double structureAlphaBeta = structureSetting?.AlphaBeta ?? 3.0;
+                string methodLabel = isEqd2Sum ? $"EQD2 α/β={structureAlphaBeta:F1}" : "Physical Sum";
 
-                DoseVolumePoint[] dvhPoints = _dvhService.CalculateDVHFromSummedDose(summedSlices, masks, voxelVolCc, maxDoseGy);
+                DoseVolumePoint[] dvhPoints;
+
+                if (isEqd2Sum)
+                {
+                    // Per-structure EQD2 DVH using stored per-plan physical doses
+                    dvhPoints = _summationService.ComputeStructureEQD2DVH(
+                        structureId, structureAlphaBeta, maxDoseGy);
+                }
+                else
+                {
+                    // Physical sum — use the existing summed slices directly
+                    double[][] summedSlices = new double[sliceCount][];
+                    bool[][] masks = new bool[sliceCount][];
+                    for (int z = 0; z < sliceCount; z++)
+                    {
+                        summedSlices[z] = _summationService.GetSummedSlice(z);
+                        masks[z] = _summationService.GetStructureMask(structureId, z);
+                    }
+                    dvhPoints = _dvhService.CalculateDVHFromSummedDose(summedSlices, masks, voxelVolCc, maxDoseGy);
+                }
+
                 if (dvhPoints == null || dvhPoints.Length == 0) continue;
 
+                // Count structure volume
                 long totalVoxels = 0;
                 for (int z = 0; z < sliceCount; z++)
-                    if (masks[z] != null) for (int i = 0; i < masks[z].Length; i++) if (masks[z][i]) totalVoxels++;
+                {
+                    bool[] mask = _summationService.GetStructureMask(structureId, z);
+                    if (mask != null) for (int i = 0; i < mask.Length; i++) if (mask[i]) totalVoxels++;
+                }
 
-                SummaryData.Add(_dvhService.BuildSummaryFromCurve(structureId, "Summation", methodLabel, dvhPoints, totalVoxels * voxelVolCc));
+                SummaryData.Add(_dvhService.BuildSummaryFromCurve(
+                    structureId, "Summation", methodLabel, dvhPoints, totalVoxels * voxelVolCc));
 
                 var cached = _dvhCache.FirstOrDefault(c => c.Structure.Id == structureId);
                 OxyColor color = cached != null
@@ -185,8 +276,11 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
                 var series = new LineSeries
                 {
-                    Title = $"{structureId} {methodLabel}", Tag = $"Summation_{structureId}",
-                    Color = color, StrokeThickness = 2.5, LineStyle = LineStyle.DashDot
+                    Title = $"{structureId} {methodLabel}",
+                    Tag = $"Summation_{structureId}",
+                    Color = color,
+                    StrokeThickness = 2.5,
+                    LineStyle = LineStyle.DashDot
                 };
                 series.Points.AddRange(dvhPoints.Select(p => new DataPoint(p.DoseGy, p.VolumePercent)));
                 PlotModel.Series.Add(series);
@@ -202,7 +296,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 SummaryData.Remove(s);
         }
 
-        // ═══ SUMMATION RENDERING ═══
+        // ═══════════════════════════════════════════
+        // SUMMATION RENDERING (unchanged logic)
+        // ═══════════════════════════════════════════
 
         private void RenderSummationScene()
         {
@@ -243,7 +339,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                     contours.Add(new IsodoseContourData { Geometry = geo, Stroke = brush, StrokeThickness = 1.0 });
                 }
                 ContourLines = contours;
-                StatusText = $"[Summation · Line] Slice {CurrentSlice} | Ref: {refDose:F2} Gy";
+                StatusText = $"[Summation · Line] Slice {CurrentSlice} | Ref: {refDose:F2} Gy | α/β: {_displayAlphaBeta:F1}";
             }
             else
             {
@@ -318,7 +414,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 }
 
                 string ml = _doseDisplayMode == DoseDisplayMode.Fill ? "Fill" : "Colorwash";
-                StatusText = $"[Summation · {ml}] Slice {CurrentSlice} | Ref: {refDose:F2} Gy";
+                StatusText = $"[Summation · {ml}] Slice {CurrentSlice} | Ref: {refDose:F2} Gy | α/β: {_displayAlphaBeta:F1}";
                 DoseImageSource.AddDirtyRect(new System.Windows.Int32Rect(0, 0, w, h));
             }
             finally { DoseImageSource.Unlock(); }

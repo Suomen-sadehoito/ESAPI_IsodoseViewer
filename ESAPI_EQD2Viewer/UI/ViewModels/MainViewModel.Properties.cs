@@ -8,7 +8,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
     public partial class MainViewModel
     {
-        // ═══ PATIENT & PLAN DISPLAY ═══
+        // ═══════════════════════════════════════════
+        // PATIENT & PLAN DISPLAY
+        // ═══════════════════════════════════════════
 
         public string PatientDisplayName
         {
@@ -52,7 +54,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             }
         }
 
-        // ═══ CT IMAGE & SLICE ═══
+        // ═══════════════════════════════════════════
+        // CT IMAGE & SLICE
+        // ═══════════════════════════════════════════
 
         private WriteableBitmap _ctImageSource;
         public WriteableBitmap CtImageSource { get => _ctImageSource; set => SetProperty(ref _ctImageSource, value); }
@@ -75,12 +79,16 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         private string _statusText;
         public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
 
-        // ═══ ISODOSE CONTOURS ═══
+        // ═══════════════════════════════════════════
+        // ISODOSE CONTOURS
+        // ═══════════════════════════════════════════
 
         private ObservableCollection<IsodoseContourData> _contourLines;
         public ObservableCollection<IsodoseContourData> ContourLines { get => _contourLines; set => SetProperty(ref _contourLines, value); }
 
-        // ═══ STRUCTURE CONTOURS ═══
+        // ═══════════════════════════════════════════
+        // STRUCTURE CONTOURS
+        // ═══════════════════════════════════════════
 
         private ObservableCollection<StructureContourData> _structureContourLines;
         public ObservableCollection<StructureContourData> StructureContourLines { get => _structureContourLines; set => SetProperty(ref _structureContourLines, value); }
@@ -88,12 +96,16 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         private bool _showStructureContours;
         public bool ShowStructureContours { get => _showStructureContours; set { if (SetProperty(ref _showStructureContours, value)) RequestRender(); } }
 
-        // ═══ DOSE CURSOR ═══
+        // ═══════════════════════════════════════════
+        // DOSE CURSOR
+        // ═══════════════════════════════════════════
 
         private string _doseCursorText = "";
         public string DoseCursorText { get => _doseCursorText; set => SetProperty(ref _doseCursorText, value); }
 
-        // ═══ DOSE DISPLAY MODE ═══
+        // ═══════════════════════════════════════════
+        // DOSE DISPLAY MODE
+        // ═══════════════════════════════════════════
 
         private DoseDisplayMode _doseDisplayMode = DoseDisplayMode.Line;
         public DoseDisplayMode DoseDisplayMode
@@ -121,7 +133,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         private double _colorwashMinPercent = 0.10;
         public double ColorwashMinPercent { get => _colorwashMinPercent; set { if (SetProperty(ref _colorwashMinPercent, value)) RequestRender(); } }
 
-        // ═══ ISODOSE MODE & UNIT ═══
+        // ═══════════════════════════════════════════
+        // ISODOSE MODE & UNIT
+        // ═══════════════════════════════════════════
 
         private IsodoseMode _isodoseMode = IsodoseMode.Relative;
         public IsodoseMode CurrentIsodoseMode
@@ -204,7 +218,11 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             return _isodoseMode == IsodoseMode.Absolute ? level.AbsoluteDoseGy : referenceDoseGy * level.Fraction;
         }
 
-        // ═══ EQD2 SETTINGS ═══
+        // ═══════════════════════════════════════════
+        // EQD2 DISPLAY SETTINGS
+        // (Controls isodose visualization ONLY.
+        //  DVH uses per-structure α/β values.)
+        // ═══════════════════════════════════════════
 
         private bool _isEQD2Enabled;
         public bool IsEQD2Enabled
@@ -213,19 +231,53 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             set { if (SetProperty(ref _isEQD2Enabled, value)) { RequestRender(); if (_dvhCache.Count > 0) RecalculateAllDVH(); } }
         }
 
-        private double _globalAlphaBeta = 3.0;
-        public double GlobalAlphaBeta
+        /// <summary>
+        /// α/β ratio for isodose LINE/FILL/COLORWASH visualization only.
+        /// Changing this re-renders the current slice; does NOT re-run summation.
+        /// For summation: triggers a fast EQD2 recomputation from stored physical doses.
+        /// DVH calculations use per-structure α/β from StructureSettings instead.
+        /// </summary>
+        private double _displayAlphaBeta = 3.0;
+        public double DisplayAlphaBeta
         {
-            get => _globalAlphaBeta;
-            set { if (SetProperty(ref _globalAlphaBeta, value)) { RequestRender(); ResummatIfActive(); } }
+            get => _displayAlphaBeta;
+            set
+            {
+                if (value <= 0) value = 0.5; // Prevent invalid input
+                if (SetProperty(ref _displayAlphaBeta, value))
+                {
+                    RequestRender();
+                    // Recompute display sum from stored physical doses (fast, no re-summation)
+                    RecomputeDisplayEQD2IfActive();
+                }
+            }
         }
 
+        /// <summary>
+        /// Number of fractions for single-plan EQD2 display.
+        /// In summation mode, each plan has its own fraction count.
+        /// </summary>
         private int _numberOfFractions = 1;
         public int NumberOfFractions
         {
             get => _numberOfFractions;
-            set { if (SetProperty(ref _numberOfFractions, value)) { RequestRender(); if (_dvhCache.Count > 0) RecalculateAllDVH(); } }
+            set
+            {
+                if (value < 1) value = 1; // Prevent invalid input
+                if (SetProperty(ref _numberOfFractions, value))
+                {
+                    RequestRender();
+                    if (_dvhCache.Count > 0) RecalculateAllDVH();
+                }
+            }
         }
+
+        /// <summary>
+        /// Read-only display of the α/β used in the active summation.
+        /// Shown in the UI when summation is active so users know what was used.
+        /// </summary>
+        private string _summationAlphaBetaLabel = "";
+        public string SummationAlphaBetaLabel { get => _summationAlphaBetaLabel; set => SetProperty(ref _summationAlphaBetaLabel, value); }
 
         private EQD2MeanMethod _meanMethod = EQD2MeanMethod.Simple;
         public EQD2MeanMethod MeanMethod
@@ -241,7 +293,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             set { if (SetProperty(ref _useDifferentialMethod, value)) MeanMethod = value ? EQD2MeanMethod.Differential : EQD2MeanMethod.Simple; }
         }
 
-        // ═══ REGISTRATION OVERLAY ═══
+        // ═══════════════════════════════════════════
+        // REGISTRATION OVERLAY
+        // ═══════════════════════════════════════════
 
         public enum OverlayMode { Off, Checkerboard, Blend }
 
@@ -279,7 +333,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         private WriteableBitmap _overlayImageSource;
         public WriteableBitmap OverlayImageSource { get => _overlayImageSource; set => SetProperty(ref _overlayImageSource, value); }
 
-        // ═══ DVH DISPLAY ═══
+        // ═══════════════════════════════════════════
+        // DVH DISPLAY
+        // ═══════════════════════════════════════════
 
         private bool _showPhysicalDVH = true;
         public bool ShowPhysicalDVH { get => _showPhysicalDVH; set { if (SetProperty(ref _showPhysicalDVH, value)) UpdatePlotVisibility(); } }

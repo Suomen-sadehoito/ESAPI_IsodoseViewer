@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.Input;
+﻿using CommunityToolkit.Mvvm.Input;
 using ESAPI_EQD2Viewer.Core.Models;
 using ESAPI_EQD2Viewer.Services;
 using System.Linq;
@@ -87,8 +87,28 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             foreach (var level in IsodoseLevels) level.IsVisible = visible;
         }
 
+        /// <summary>
+        /// Sets the display α/β to a preset value (e.g. 3 for late effects, 10 for tumor).
+        /// </summary>
         [RelayCommand]
-        private void CalculateEQD2() { IsEQD2Enabled = true; RecalculateAllDVH(); }
+        private void SetDisplayAlphaBeta(string valueStr)
+        {
+            if (double.TryParse(valueStr, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double value) && value > 0)
+            {
+                DisplayAlphaBeta = value;
+            }
+        }
+
+        [RelayCommand]
+        private void CalculateEQD2()
+        {
+            IsEQD2Enabled = true;
+            RecalculateAllDVH();
+            // If summation is active, also recalculate summation DVH with per-structure α/β
+            if (_isSummationActive && _summationService != null && _summationService.HasSummedDose)
+                CalculateSummationDVH(_summationService.MaxDoseGy);
+        }
 
         [RelayCommand]
         private void ExportCSV() { if (SummaryData.Any()) ExportService.ExportSummaryToCSV(SummaryData); }

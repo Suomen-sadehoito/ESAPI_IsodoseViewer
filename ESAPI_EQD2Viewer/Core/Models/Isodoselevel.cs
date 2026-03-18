@@ -1,43 +1,49 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 
 namespace ESAPI_EQD2Viewer.Core.Models
 {
     /// <summary>
-    /// How isodose thresholds are interpreted.
+    /// Determines how isodose thresholds are interpreted for display.
     /// </summary>
     public enum IsodoseMode
     {
         /// <summary>
         /// Thresholds as percentage of a reference dose (Eclipse-style).
-        /// Used for single-plan viewing.
+        /// Typical for single-plan viewing where prescription dose is the reference.
+        /// Example: 95% of 50 Gy = 47.5 Gy threshold.
         /// </summary>
         Relative,
 
         /// <summary>
         /// Thresholds as absolute Gy values (no reference dose needed).
-        /// Used for EQD2 summation where clinical tolerances are in Gy.
+        /// Used for EQD2 summation where clinical tolerances are defined in absolute Gy
+        /// (e.g., spinal cord 45 Gy EQD2, brainstem 50 Gy EQD2).
         /// </summary>
         Absolute
     }
 
     /// <summary>
-    /// Display unit for isodose level thresholds (within Relative mode).
+    /// Display unit for isodose level labels within <see cref="IsodoseMode.Relative"/> mode.
+    /// Controls whether the label shows "95%" or "47.5 Gy".
     /// </summary>
     public enum IsodoseUnit
     {
+        /// <summary>Show as percentage of reference dose (e.g., "95%").</summary>
         Percent,
+        /// <summary>Show as absolute Gy computed from fraction × reference (e.g., "47.5 Gy").</summary>
         Gy
     }
 
     /// <summary>
-    /// Single isodose level with dual-mode threshold support.
+    /// Represents a single isodose level with dual-mode threshold support, color, and visibility.
     /// 
-    /// In Relative mode: threshold = Fraction � referenceDose.
-    /// In Absolute mode: threshold = AbsoluteDoseGy directly.
+    /// In <see cref="IsodoseMode.Relative"/>: threshold = <see cref="Fraction"/> × referenceDose.
+    /// In <see cref="IsodoseMode.Absolute"/>: threshold = <see cref="AbsoluteDoseGy"/> directly.
     /// 
     /// Both modes share the same color, visibility, and alpha settings.
+    /// Implements <see cref="INotifyPropertyChanged"/> for WPF data binding in the isodose DataGrid.
     /// </summary>
     public class IsodoseLevel : INotifyPropertyChanged
     {
@@ -49,8 +55,9 @@ namespace ESAPI_EQD2Viewer.Core.Models
         private bool _isVisible = true;
 
         /// <summary>
-        /// Threshold as fraction of reference dose (e.g. 1.10 = 110%).
-        /// Used in Relative mode.
+        /// Threshold as fraction of reference dose (e.g., 1.10 = 110%, 0.50 = 50%).
+        /// Used in <see cref="IsodoseMode.Relative"/> mode.
+        /// Range: typically 0.05–1.20. Values above 1.0 represent hot spots.
         /// </summary>
         public double Fraction
         {
@@ -60,7 +67,8 @@ namespace ESAPI_EQD2Viewer.Core.Models
 
         /// <summary>
         /// Threshold as absolute dose in Gy.
-        /// Used in Absolute mode (EQD2 summation).
+        /// Used in <see cref="IsodoseMode.Absolute"/> mode (EQD2 summation re-irradiation assessment).
+        /// Range: typically 5–80 Gy for clinical tolerances.
         /// </summary>
         public double AbsoluteDoseGy
         {
@@ -69,8 +77,8 @@ namespace ESAPI_EQD2Viewer.Core.Models
         }
 
         /// <summary>
-        /// Display label (e.g. "110%", "45.0 Gy", "50%").
-        /// Updated by ViewModel when mode or reference changes.
+        /// Display label shown in the isodose table (e.g., "110%", "45.0 Gy", "50%").
+        /// Updated by the ViewModel when isodose mode, display unit, or reference dose changes.
         /// </summary>
         public string Label
         {
@@ -79,8 +87,9 @@ namespace ESAPI_EQD2Viewer.Core.Models
         }
 
         /// <summary>
-        /// ARGB color as uint (0xAARRGGBB). Alpha in Color is typically 0xFF;
-        /// actual overlay alpha comes from the Alpha property.
+        /// Isodose line/fill color as packed ARGB uint (0xAARRGGBB format).
+        /// The alpha channel in <see cref="Color"/> is typically 0xFF (opaque);
+        /// actual overlay transparency comes from the separate <see cref="Alpha"/> property.
         /// </summary>
         public uint Color
         {
@@ -89,7 +98,9 @@ namespace ESAPI_EQD2Viewer.Core.Models
         }
 
         /// <summary>
-        /// Overlay alpha for fill mode (0-255). Line mode always uses 255.
+        /// Overlay alpha for Fill display mode (0 = transparent, 255 = opaque).
+        /// Line mode always renders at full opacity regardless of this value.
+        /// Default: 140 (~55% opacity) for subtle fill overlay.
         /// </summary>
         public byte Alpha
         {
@@ -98,7 +109,8 @@ namespace ESAPI_EQD2Viewer.Core.Models
         }
 
         /// <summary>
-        /// Whether this level is drawn on the dose overlay.
+        /// Whether this isodose level is rendered on the dose overlay.
+        /// Toggled via checkbox in the isodose level DataGrid.
         /// </summary>
         public bool IsVisible
         {
@@ -107,7 +119,8 @@ namespace ESAPI_EQD2Viewer.Core.Models
         }
 
         /// <summary>
-        /// WPF-bindable color for UI display (DataGrid color swatch, color picker).
+        /// WPF-bindable <see cref="System.Windows.Media.Color"/> for UI display
+        /// (color swatch in DataGrid, color picker). Always fully opaque (A=255).
         /// </summary>
         public Color MediaColor => System.Windows.Media.Color.FromArgb(
             255,
@@ -115,6 +128,13 @@ namespace ESAPI_EQD2Viewer.Core.Models
             (byte)((_color >> 8) & 0xFF),
             (byte)(_color & 0xFF));
 
+        /// <summary>
+        /// Creates an isodose level for relative (percentage) mode.
+        /// </summary>
+        /// <param name="fraction">Threshold as fraction of reference dose (e.g., 0.95 = 95%).</param>
+        /// <param name="label">Display label (e.g., "95%").</param>
+        /// <param name="color">ARGB color as uint (e.g., 0xFFFF0000 for red).</param>
+        /// <param name="alpha">Fill overlay opacity (0–255). Default: 140.</param>
         public IsodoseLevel(double fraction, string label, uint color, byte alpha = 140)
         {
             _fraction = fraction;
@@ -125,8 +145,13 @@ namespace ESAPI_EQD2Viewer.Core.Models
         }
 
         /// <summary>
-        /// Constructor for absolute mode levels.
+        /// Creates an isodose level for absolute (Gy) mode.
         /// </summary>
+        /// <param name="fraction">Relative fraction (can be 0 when only absolute is used).</param>
+        /// <param name="absoluteGy">Absolute dose threshold in Gy.</param>
+        /// <param name="label">Display label (e.g., "45 Gy").</param>
+        /// <param name="color">ARGB color as uint.</param>
+        /// <param name="alpha">Fill overlay opacity (0–255). Default: 140.</param>
         public IsodoseLevel(double fraction, double absoluteGy, string label, uint color, byte alpha = 140)
         {
             _fraction = fraction;
@@ -141,27 +166,30 @@ namespace ESAPI_EQD2Viewer.Core.Models
         // =================================================================
 
         /// <summary>
-        /// Eclipse-like 10-level defaults. Max = 110%.
+        /// Eclipse-style 10-level default isodose set.
+        /// Covers hot spots (110%) down to low-dose spread (10%).
+        /// Suitable for conventional fractionation plan review.
         /// </summary>
         public static IsodoseLevel[] GetEclipseDefaults()
         {
             return new[]
             {
-                new IsodoseLevel(1.10, "110%", 0xFFFF0000, 160),   // Red (hot spot)
+                new IsodoseLevel(1.10, "110%", 0xFFFF0000, 160),   // Red — hot spot warning
                 new IsodoseLevel(1.05, "105%", 0xFFFF4400, 150),   // Orange-red
-                new IsodoseLevel(1.00, "100%", 0xFFFF8800, 140),   // Orange
-                new IsodoseLevel(0.95, "95%",  0xFFFFFF00, 130),   // Yellow
+                new IsodoseLevel(1.00, "100%", 0xFFFF8800, 140),   // Orange — prescription dose
+                new IsodoseLevel(0.95, "95%",  0xFFFFFF00, 130),   // Yellow — target coverage
                 new IsodoseLevel(0.90, "90%",  0xFF00FF00, 120),   // Green
                 new IsodoseLevel(0.80, "80%",  0xFF00FFFF, 110),   // Cyan
                 new IsodoseLevel(0.70, "70%",  0xFF0088FF, 100),   // Light blue
-                new IsodoseLevel(0.50, "50%",  0xFF0000FF, 90),    // Blue
+                new IsodoseLevel(0.50, "50%",  0xFF0000FF, 90),    // Blue — half prescription
                 new IsodoseLevel(0.30, "30%",  0xFF8800FF, 80),    // Purple
-                new IsodoseLevel(0.10, "10%",  0xFFFF00FF, 70),    // Magenta
+                new IsodoseLevel(0.10, "10%",  0xFFFF00FF, 70),    // Magenta — low dose
             };
         }
 
         /// <summary>
-        /// Basic 4-level set.
+        /// Compact 4-level set for quick plan review.
+        /// Shows hot spots, prescription, target coverage, and half-prescription.
         /// </summary>
         public static IsodoseLevel[] GetDefaults()
         {
@@ -175,7 +203,7 @@ namespace ESAPI_EQD2Viewer.Core.Models
         }
 
         /// <summary>
-        /// Minimal 3-level set.
+        /// Minimal 3-level set: hot spot, target boundary, and low dose.
         /// </summary>
         public static IsodoseLevel[] GetMinimalSet()
         {
@@ -188,30 +216,35 @@ namespace ESAPI_EQD2Viewer.Core.Models
         }
 
         // =================================================================
-        // ABSOLUTE MODE PRESETS (EQD2 summation)
+        // ABSOLUTE MODE PRESETS (EQD2 summation / re-irradiation)
         // =================================================================
 
         /// <summary>
-        /// Re-irradiation assessment: OAR tolerance thresholds in EQD2 Gy.
-        /// Covers typical spinal cord (45 Gy), brainstem (50 Gy) tolerances.
+        /// Re-irradiation assessment: OAR tolerance thresholds in EQD2 Gy (α/β = 3).
+        /// Covers typical constraints:
+        ///   60 Gy — critical overdose
+        ///   50 Gy — brainstem tolerance
+        ///   45 Gy — spinal cord tolerance (conventional)
+        ///   30 Gy — brachial plexus partial volume
         /// </summary>
         public static IsodoseLevel[] GetReIrradiationPreset()
         {
             return new[]
             {
-                new IsodoseLevel(0, 60, "60 Gy", 0xFFFF0000, 160),   // Red � critical overdose
-                new IsodoseLevel(0, 50, "50 Gy", 0xFFFF4400, 150),   // Orange-red � brainstem
-                new IsodoseLevel(0, 45, "45 Gy", 0xFFFF8800, 140),   // Orange � spinal cord
-                new IsodoseLevel(0, 40, "40 Gy", 0xFFFFFF00, 130),   // Yellow
-                new IsodoseLevel(0, 35, "35 Gy", 0xFF88FF00, 120),   // Yellow-green
-                new IsodoseLevel(0, 30, "30 Gy", 0xFF00FF00, 110),   // Green
-                new IsodoseLevel(0, 20, "20 Gy", 0xFF00BBFF, 100),   // Light blue
-                new IsodoseLevel(0, 10, "10 Gy", 0xFF0000FF, 80),    // Blue � low dose spread
+                new IsodoseLevel(0, 60, "60 Gy", 0xFFFF0000, 160),
+                new IsodoseLevel(0, 50, "50 Gy", 0xFFFF4400, 150),
+                new IsodoseLevel(0, 45, "45 Gy", 0xFFFF8800, 140),
+                new IsodoseLevel(0, 40, "40 Gy", 0xFFFFFF00, 130),
+                new IsodoseLevel(0, 35, "35 Gy", 0xFF88FF00, 120),
+                new IsodoseLevel(0, 30, "30 Gy", 0xFF00FF00, 110),
+                new IsodoseLevel(0, 20, "20 Gy", 0xFF00BBFF, 100),
+                new IsodoseLevel(0, 10, "10 Gy", 0xFF0000FF, 80),
             };
         }
 
         /// <summary>
-        /// Stereotactic re-irradiation: higher dose range.
+        /// Stereotactic re-irradiation: higher dose range for SBRT/SRS cases.
+        /// Extends to 80 Gy EQD2 for high-dose targets.
         /// </summary>
         public static IsodoseLevel[] GetStereotacticPreset()
         {
@@ -228,7 +261,8 @@ namespace ESAPI_EQD2Viewer.Core.Models
         }
 
         /// <summary>
-        /// Palliative re-irradiation: lower dose range.
+        /// Palliative re-irradiation: lower dose range for palliative retreatment.
+        /// Starts at 45 Gy with finer low-dose resolution.
         /// </summary>
         public static IsodoseLevel[] GetPalliativePreset()
         {
@@ -246,12 +280,13 @@ namespace ESAPI_EQD2Viewer.Core.Models
         }
 
         // =================================================================
-        // COLOR PALETTE for picker
+        // COLOR PALETTE
         // =================================================================
 
         /// <summary>
-        /// Predefined color palette for the color picker.
-        /// 16 distinct colors commonly used in isodose displays.
+        /// Predefined 16-color palette for the isodose color picker.
+        /// Cycles through on click. Uses high-saturation colors for visibility
+        /// against both light and dark CT backgrounds.
         /// </summary>
         public static uint[] ColorPalette => new uint[]
         {
@@ -274,6 +309,7 @@ namespace ESAPI_EQD2Viewer.Core.Models
         };
 
         public event PropertyChangedEventHandler PropertyChanged;
+
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

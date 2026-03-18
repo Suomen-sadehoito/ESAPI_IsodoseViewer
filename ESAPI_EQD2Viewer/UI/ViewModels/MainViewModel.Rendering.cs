@@ -1,4 +1,4 @@
-using ESAPI_EQD2Viewer.Core.Models;
+﻿using ESAPI_EQD2Viewer.Core.Models;
 using System;
 using System.Collections.ObjectModel;
 using System.Threading;
@@ -9,6 +9,10 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
     public partial class MainViewModel
     {
+        /// <summary>
+        /// Coalesces rapid property changes into a single render dispatch.
+        /// Uses Interlocked.CompareExchange as a lock-free "dirty" flag.
+        /// </summary>
         internal void RequestRender()
         {
             if (Interlocked.CompareExchange(ref _renderPendingFlag, 1, 0) != 0) return;
@@ -19,6 +23,10 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             }), DispatcherPriority.Render);
         }
 
+        /// <summary>
+        /// Master render method — orchestrates CT, overlay, structures, and dose rendering.
+        /// Guard: skips if already rendering (prevents re-entrant calls).
+        /// </summary>
         private void RenderScene()
         {
             if (_disposed || _context.Image == null) return;
@@ -35,16 +43,25 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 else
                     RenderSinglePlanDose();
             }
+            catch (Exception ex)
+            {
+                Core.Logging.SimpleLogger.Error("RenderScene failed", ex);
+            }
             finally { _isRendering = false; }
         }
 
+        /// <summary>
+        /// Renders dose overlay for a single plan (non-summation mode).
+        /// Uses DisplayAlphaBeta for EQD2 visualization — NOT for DVH.
+        /// </summary>
         private void RenderSinglePlanDose()
         {
             double planTotalDoseGy = GetPrescriptionGy();
             double planNormalization = _plan?.PlanNormalizationValue ?? 100.0;
 
+            // Display α/β is for visualization only
             EQD2Settings eqd2 = _isEQD2Enabled
-                ? new EQD2Settings { IsEnabled = true, AlphaBeta = _globalAlphaBeta, NumberOfFractions = _numberOfFractions }
+                ? new EQD2Settings { IsEnabled = true, AlphaBeta = _displayAlphaBeta, NumberOfFractions = _numberOfFractions }
                 : null;
 
             if (_doseDisplayMode == DoseDisplayMode.Line)
@@ -83,6 +100,23 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         {
             int w = _context.Image.XSize, h = _context.Image.YSize;
             var bmp = OverlayImageSource;
+
+            // Early return before Lock() if overlay is off — avoids unnecessary lock overhead
+            if (_overlayMode == OverlayMode.Off || _summationService == null || !_isSummationActive)
+            {
+                bmp.Lock();
+                try
+                {
+                    byte* p = (byte*)bmp.BackBuffer;
+                    for (int i = 0; i < h * bmp.BackBufferStride; i++) p[i] = 0;
+                    bmp.AddDirtyRect(new Int32Rect(0, 0, w, h));
+                }
+                finally { bmp.Unlock(); }
+                return;
+            }
+
+            int[] secondaryCt = _summationService.GetRegisteredCtSlice(_selectedOverlayPlanLabel, CurrentSlice);
+
             bmp.Lock();
             try
             {
@@ -90,10 +124,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 int stride = bmp.BackBufferStride;
                 for (int i = 0; i < h * stride; i++) p[i] = 0;
 
-                if (_overlayMode == OverlayMode.Off || _summationService == null || !_isSummationActive)
-                { bmp.AddDirtyRect(new Int32Rect(0, 0, w, h)); return; }
-
-                int[] secondaryCt = _summationService.GetRegisteredCtSlice(_selectedOverlayPlanLabel, CurrentSlice);
                 if (secondaryCt == null || secondaryCt.Length != w * h)
                 { bmp.AddDirtyRect(new Int32Rect(0, 0, w, h)); return; }
 
@@ -136,6 +166,11 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             finally { bmp.Unlock(); }
         }
 
+        /// <summary>
+        /// Updates the dose readout text at the cursor position.
+        /// Called from InteractiveImageViewer on mouse move.
+        /// Single source of truth — the DoseCursorText property drives the UI.
+        /// </summary>
         public void UpdateDoseCursor(int pixelX, int pixelY)
         {
             if (_plan?.Dose == null && !_isSummationActive) { DoseCursorText = ""; return; }
@@ -151,8 +186,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             }
             else
             {
+                // Single-plan: use DisplayAlphaBeta for cursor readout (consistent with display)
                 EQD2Settings eqd2 = _isEQD2Enabled
-                    ? new EQD2Settings { IsEnabled = true, AlphaBeta = _globalAlphaBeta, NumberOfFractions = _numberOfFractions }
+                    ? new EQD2Settings { IsEnabled = true, AlphaBeta = _displayAlphaBeta, NumberOfFractions = _numberOfFractions }
                     : null;
                 doseGy = _renderingService.GetDoseAtPixel(_context.Image, _plan?.Dose, CurrentSlice, pixelX, pixelY, eqd2);
             }
