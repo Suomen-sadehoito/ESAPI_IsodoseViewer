@@ -4,7 +4,7 @@ ESAPI-skripti Varian Eclipseen EQD2 jakaumien tarkasteluun ja uudelleensäteilyt
 
 ## Projektin tila
 
-**Alpha-vaihe.** Perustoiminnallisuus on kasassa mutta testausta kliinisillä potilailla ei ole vielä tehty riittävästi. Käytä omalla vastuulla ja tarkista aina laskelmat käsin.
+**Alpha** Perustoiminnallisuus on kasassa mutta testausta kliinisillä potilailla ei ole vielä tehty riittävästi. Käytä omalla vastuulla ja tarkista aina laskelmat käsin.
 
 ## Vaatimukset
 
