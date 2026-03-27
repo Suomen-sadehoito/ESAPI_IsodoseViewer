@@ -28,10 +28,10 @@ jobs:
     # Use the CI solution filter — excludes FixtureGenerator which requires real ESAPI DLLs.
     # The full .sln includes all projects and is used on Eclipse workstations.
     - name: Restore NuGet packages
-      run: nuget restore ESAPI_EQD2Viewer.CI.sln
+      run: nuget restore ESAPI_EQD2Viewer.sln
 
     - name: Build solution (CI filter — excludes FixtureGenerator)
-      run: msbuild ESAPI_EQD2Viewer.CI.sln /p:Configuration=Debug /p:Platform="Any CPU" /t:Build /verbosity:minimal
+      run: msbuild ESAPI_EQD2Viewer.sln /p:Configuration=Debug /p:Platform="Any CPU" /t:Build /verbosity:minimal
 
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
