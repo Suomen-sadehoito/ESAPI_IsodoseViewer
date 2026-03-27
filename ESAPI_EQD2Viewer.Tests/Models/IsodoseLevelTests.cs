@@ -141,7 +141,7 @@ namespace ESAPI_EQD2Viewer.Tests.Models
         {
             foreach (uint color in IsodoseLevel.ColorPalette)
             {
-                byte alpha = (byte)((color >> 24) & 0xFF);
+                byte alpha = (byte)(color >> 24 & 0xFF);
                 alpha.Should().Be(0xFF, "palette colors should have full alpha");
             }
         }

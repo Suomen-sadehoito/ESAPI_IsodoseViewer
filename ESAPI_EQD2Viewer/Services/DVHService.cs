@@ -107,7 +107,7 @@ namespace ESAPI_EQD2Viewer.Services
 
             double dMax = 0;
             for (int i = curve.Length - 1; i >= 0; i--)
-                if (curve[i].VolumePercent > 0.01) { dMax = curve[i].DoseGy; break; }
+                if (curve[i].VolumePercent > 0) { dMax = curve[i].DoseGy; break; }
 
             double dMin = 0;
             for (int i = 0; i < curve.Length; i++)

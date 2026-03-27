@@ -1,0 +1,12 @@
+{
+  "xSize": 131,
+  "ySize": 131,
+  "zSize": 237,
+  "xRes": 2.5,
+  "yRes": 2.5,
+  "zRes": 2,
+  "origin": [-160.9864454, -162.1886353, -123.5],
+  "xDirection": [1, 0, 0],
+  "yDirection": [0, 1, 0],
+  "zDirection": [0, 0, 1]
+}

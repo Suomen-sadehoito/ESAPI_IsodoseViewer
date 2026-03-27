@@ -1,14 +1,16 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net48</TargetFramework>
 		<LangVersion>latest</LangVersion>
-		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>disable</Nullable>
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
 		<PlatformTarget>x64</PlatformTarget>
 		<Platforms>AnyCPU;x64</Platforms>
+		<!-- Suppress version conflict warnings from CommunityToolkit.Mvvm (netstandard2.0)
+		     pulling newer System.Memory/Buffers/etc. than net48 resolves natively.
+		     Safe to ignore — net48 BCL provides compatible implementations at runtime. -->
+		<MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -18,9 +20,9 @@
 		<PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
 		<PackageReference Include="FluentAssertions" Version="6.12.0" />
 		<PackageReference Include="Moq" Version="4.20.70" />
+		<PackageReference Include="System.Text.Json" Version="8.0.5" />
 	</ItemGroup>
 
-	<!-- WPF framework assemblies needed for Point, Color etc. -->
 	<ItemGroup>
 		<Reference Include="WindowsBase" />
 		<Reference Include="PresentationCore" />
@@ -28,11 +30,38 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- Global usings applied to all test files automatically.
+		     System: provides Math, Random, etc.
+		     Xunit: provides Fact, Theory, InlineData, etc. -->
+		<Using Include="System" />
 		<Using Include="Xunit" />
 	</ItemGroup>
 
+	<!-- Main project reference — Stubs flow transitively through this when lib/ is
+	     missing (CI/GitHub). Do NOT add a direct Stubs reference here; that causes
+	     CS0433 duplicate type errors when real ESAPI DLLs are also present. -->
 	<ItemGroup>
 		<ProjectReference Include="..\ESAPI_EQD2Viewer\ESAPI_EQD2Viewer.csproj" />
 	</ItemGroup>
 
+	<!-- Local dev: real ESAPI DLLs present in lib/ (not committed to git).
+	     Private=False prevents double-copying — ESAPI runtime provides them
+	     at execution time inside Eclipse/Aria. -->
+	<ItemGroup Condition="Exists('..\lib\VMS.TPS.Common.Model.API.dll')">
+		<Reference Include="VMS.TPS.Common.Model.API">
+			<HintPath>..\lib\VMS.TPS.Common.Model.API.dll</HintPath>			
+		</Reference>
+		<Reference Include="VMS.TPS.Common.Model.Types">
+			<HintPath>..\lib\VMS.TPS.Common.Model.Types.dll</HintPath>			
+		</Reference>
+	</ItemGroup>
+
+	<!-- CI/GitHub: no ESAPI DLLs — Stubs come transitively via
+	     ESAPI_EQD2Viewer.csproj. No direct Stubs reference needed here. -->
+
+	<ItemGroup>
+		<Content Include="TestFixtures\**\*.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 </Project>

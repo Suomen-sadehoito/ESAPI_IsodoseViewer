@@ -1,0 +1,11 @@
+{
+  "patientId": "z12345",
+  "courseId": "Vanhat",
+  "planId": "EQD2",
+  "totalDoseGy": 50,
+  "numberOfFractions": 25,
+  "planNormalization": 100,
+  "dosePerFractionGy": 2,
+  "generatedAt": "2026-03-27T13:01:28.5973769+02:00",
+  "generatorVersion": "1.0.0"
+}

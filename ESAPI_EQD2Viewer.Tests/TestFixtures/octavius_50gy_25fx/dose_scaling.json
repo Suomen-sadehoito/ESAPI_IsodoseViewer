@@ -1,0 +1,9 @@
+{
+  "rawScale": 0.0001,
+  "rawOffset": 0,
+  "doseUnit": "Percent",
+  "unitToGy": 0.5,
+  "calibrationRawValue": 10000,
+  "calibrationDoseValue": 1,
+  "calibrationDoseUnit": "Percent"
+}

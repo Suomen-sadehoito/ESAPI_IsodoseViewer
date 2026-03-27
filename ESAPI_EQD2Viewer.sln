@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ESAPI_EQD2Viewer.Tests", "E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ESAPI_EQD2Viewer.Stubs", "ESAPI_EQD2Viewer.Stubs\ESAPI_EQD2Viewer.Stubs.csproj", "{89142CBA-C27C-4C2D-BC54-22EFCFACFCD9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ESAPI_EQD2Viewer.FixtureGenerator", "ESAPI_EQD2Viewer.FixtureGenerator\ESAPI_EQD2Viewer.FixtureGenerator.csproj", "{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -40,6 +42,14 @@ Global
 		{89142CBA-C27C-4C2D-BC54-22EFCFACFCD9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{89142CBA-C27C-4C2D-BC54-22EFCFACFCD9}.Release|x64.ActiveCfg = Release|x64
 		{89142CBA-C27C-4C2D-BC54-22EFCFACFCD9}.Release|x64.Build.0 = Release|x64
+		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Debug|x64.Build.0 = Debug|Any CPU
+		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Release|x64.ActiveCfg = Release|Any CPU
+		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
