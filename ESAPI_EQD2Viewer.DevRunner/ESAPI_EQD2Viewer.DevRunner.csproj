@@ -28,11 +28,11 @@
 	<ItemGroup>
 		<Reference Include="VMS.TPS.Common.Model.API">
 			<HintPath>..\lib\VMS.TPS.Common.Model.API.dll</HintPath>
-			<Private>False</Private>
+			<Private>True</Private>
 		</Reference>
 		<Reference Include="VMS.TPS.Common.Model.Types">
 			<HintPath>..\lib\VMS.TPS.Common.Model.Types.dll</HintPath>
-			<Private>False</Private>
+			<Private>True</Private>
 		</Reference>
 	</ItemGroup>
 

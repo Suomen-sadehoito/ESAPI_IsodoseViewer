@@ -17,7 +17,7 @@
 	<Window.Resources>
 		<ResourceDictionary>
 			<ResourceDictionary.MergedDictionaries>
-				<ResourceDictionary Source="/ESAPI_EQD2Viewer;component/UI/Styles/SharedStyles.xaml"/>
+				<ResourceDictionary Source="/ESAPI_EQD2Viewer.esapi;component/UI/Styles/SharedStyles.xaml"/>
 			</ResourceDictionary.MergedDictionaries>
 			<BooleanToVisibilityConverter x:Key="BoolToVis"/>
 		</ResourceDictionary>
