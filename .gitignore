@@ -429,6 +429,7 @@ FodyWeavers.xsd
 
 # ESAPI DLLs — proprietary Varian files, never commit
 lib/*.dll
+!lib/.gitkeep
  
 # Test results
 TestResults/

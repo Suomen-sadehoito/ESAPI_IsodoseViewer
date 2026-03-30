@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 18
-VisualStudioVersion = 18.4.11620.152
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36616.10 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ESAPI_EQD2Viewer", "ESAPI_EQD2Viewer\ESAPI_EQD2Viewer.csproj", "{CB47C100-C47F-436D-8596-8005AB5B13A8}"
 EndProject
@@ -10,7 +10,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ESAPI_EQD2Viewer.Stubs", "E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ESAPI_EQD2Viewer.FixtureGenerator", "ESAPI_EQD2Viewer.FixtureGenerator\ESAPI_EQD2Viewer.FixtureGenerator.csproj", "{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ESAPI_EQD2Viewer.DevRunner", "ESAPI_EQD2Viewer.DevRunner\ESAPI_EQD2Viewer.DevRunner.csproj", "{7D31386F-2CAC-432B-8592-19CED7F56A47}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ESAPI_EQD2Viewer.DevRunner", "ESAPI_EQD2Viewer.DevRunner\ESAPI_EQD2Viewer.DevRunner.csproj", "{F7596383-014C-F8DE-4E55-C6096567116A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -52,14 +52,14 @@ Global
 		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Release|x64.ActiveCfg = Release|x64
 		{F1E2D3C4-B5A6-7890-CAFE-BABE12345678}.Release|x64.Build.0 = Release|x64
-		{7D31386F-2CAC-432B-8592-19CED7F56A47}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7D31386F-2CAC-432B-8592-19CED7F56A47}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7D31386F-2CAC-432B-8592-19CED7F56A47}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{7D31386F-2CAC-432B-8592-19CED7F56A47}.Debug|x64.Build.0 = Debug|Any CPU
-		{7D31386F-2CAC-432B-8592-19CED7F56A47}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7D31386F-2CAC-432B-8592-19CED7F56A47}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7D31386F-2CAC-432B-8592-19CED7F56A47}.Release|x64.ActiveCfg = Release|Any CPU
-		{7D31386F-2CAC-432B-8592-19CED7F56A47}.Release|x64.Build.0 = Release|Any CPU
+		{F7596383-014C-F8DE-4E55-C6096567116A}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{F7596383-014C-F8DE-4E55-C6096567116A}.Debug|Any CPU.Build.0 = Debug|x64
+		{F7596383-014C-F8DE-4E55-C6096567116A}.Debug|x64.ActiveCfg = Debug|x64
+		{F7596383-014C-F8DE-4E55-C6096567116A}.Debug|x64.Build.0 = Debug|x64
+		{F7596383-014C-F8DE-4E55-C6096567116A}.Release|Any CPU.ActiveCfg = Release|x64
+		{F7596383-014C-F8DE-4E55-C6096567116A}.Release|Any CPU.Build.0 = Release|x64
+		{F7596383-014C-F8DE-4E55-C6096567116A}.Release|x64.ActiveCfg = Release|x64
+		{F7596383-014C-F8DE-4E55-C6096567116A}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

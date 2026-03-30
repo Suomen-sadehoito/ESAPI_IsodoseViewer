@@ -22,6 +22,26 @@ namespace ESAPI_EQD2Viewer.DevRunner
         {
             try
             {
+                // Initialize CT Voxel Array (Jagged Array: int[][,])
+                int ctSizeX = 512;
+                int ctSizeY = 512;
+                int ctSizeZ = 100;
+                int[][,] ctVoxels = new int[ctSizeZ][,];
+                for (int z = 0; z < ctSizeZ; z++)
+                {
+                    ctVoxels[z] = new int[ctSizeX, ctSizeY];
+                }
+
+                // Initialize Dose Voxel Array (Jagged Array: int[][,])
+                int doseSizeX = 128;
+                int doseSizeY = 128;
+                int doseSizeZ = 100;
+                int[][,] doseVoxels = new int[doseSizeZ][,];
+                for (int z = 0; z < doseSizeZ; z++)
+                {
+                    doseVoxels[z] = new int[doseSizeX, doseSizeY];
+                }
+
                 // 1. Create a mock clinical snapshot with dummy data.
                 var snapshot = new ClinicalSnapshot
                 {
@@ -38,24 +58,25 @@ namespace ESAPI_EQD2Viewer.DevRunner
                         PlanNormalization = 100.0,
                         NumberOfFractions = 30
                     },
-                    // FIX: Set dimensions inside the Geometry object instead of root properties
                     CtImage = new VolumeData
                     {
                         Geometry = new VolumeGeometry
                         {
-                            XSize = 512,
-                            YSize = 512,
-                            ZSize = 100
-                        }
+                            XSize = ctSizeX,
+                            YSize = ctSizeY,
+                            ZSize = ctSizeZ
+                        },
+                        Voxels = ctVoxels // Assign the initialized array
                     },
                     Dose = new DoseVolumeData
                     {
                         Geometry = new VolumeGeometry
                         {
-                            XSize = 128,
-                            YSize = 128,
-                            ZSize = 100
-                        }
+                            XSize = doseSizeX,
+                            YSize = doseSizeY,
+                            ZSize = doseSizeZ
+                        },
+                        Voxels = doseVoxels // Assign the initialized array
                     }
                 };
 
@@ -78,7 +99,6 @@ namespace ESAPI_EQD2Viewer.DevRunner
             }
             catch (Exception ex)
             {
-                // Added StackTrace to easily pinpoint exact line numbers if future errors occur
                 MessageBox.Show($"Failed to launch dev environment:\n\n{ex.Message}\n\nStack Trace:\n{ex.StackTrace}",
                     "DevRunner Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
