@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.Input;
-using ESAPI_EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Calculations;
 using ESAPI_EQD2Viewer.Core.Interfaces;
 using ESAPI_EQD2Viewer.Core.Models;
-using ESAPI_EQD2Viewer.Core.Logging;
+using EQD2Viewer.Core.Logging;
 using ESAPI_EQD2Viewer.Services;
 using ESAPI_EQD2Viewer.UI.Views;
 using OxyPlot;
@@ -14,6 +14,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Models;
+using EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Logging;
+using ESAPI_EQD2Viewer.Core.Calculations;
 
 namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
@@ -306,7 +311,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             if (summedSlice == null) return;
 
             double refDose = _summationService.SummedReferenceDoseGy;
-            if (refDose < RenderConstants.MinReferenceDoseGy) refDose = 1.0;
+            if (refDose < DomainConstants.MinReferenceDoseGy) refDose = 1.0;
 
             if (_doseDisplayMode == DoseDisplayMode.Line)
             {
@@ -327,8 +332,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                         foreach (var chain in polylines)
                         {
                             if (chain.Count < 2) continue;
-                            ctx.BeginFigure(chain[0], false, false);
-                            for (int j = 1; j < chain.Count; j++) ctx.LineTo(chain[j], true, false);
+                            ctx.BeginFigure(new System.Windows.Point(chain[0].X, chain[0].Y), false, false);
+                            for (int j = 1; j < chain.Count; j++) ctx.LineTo(new System.Windows.Point(chain[j].X, chain[j].Y), true, false);
                         }
                     geo.Freeze();
 

@@ -13,6 +13,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using VMS.TPS.Common.Model.API;
 using VMS.TPS.Common.Model.Types;
+using ESAPI_EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Logging;
 
 namespace ESAPI_EQD2Viewer.UI.ViewModels
 {

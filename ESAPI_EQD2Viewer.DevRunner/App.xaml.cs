@@ -5,7 +5,7 @@ using System.Linq;
 using System.Windows;
 using ESAPI_EQD2Viewer.Core.Data;
 using ESAPI_EQD2Viewer.Core.Interfaces;
-using ESAPI_EQD2Viewer.Core.Logging;
+using EQD2Viewer.Core.Logging;
 using ESAPI_EQD2Viewer.Services;
 using ESAPI_EQD2Viewer.UI.ViewModels;
 using ESAPI_EQD2Viewer.UI.Views;

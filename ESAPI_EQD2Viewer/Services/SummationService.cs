@@ -6,11 +6,15 @@ using System.Threading.Tasks;
 using System.Windows;
 using VMS.TPS.Common.Model.API;
 using VMS.TPS.Common.Model.Types;
-using ESAPI_EQD2Viewer.Core.Calculations;
-using ESAPI_EQD2Viewer.Core.Extensions;
+using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Models;
+using EQD2Viewer.Core.Interfaces;
+using EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Logging;
 using ESAPI_EQD2Viewer.Core.Interfaces;
-using ESAPI_EQD2Viewer.Core.Logging;
 using ESAPI_EQD2Viewer.Core.Models;
+using ESAPI_EQD2Viewer.Core.Calculations;
+
 
 namespace ESAPI_EQD2Viewer.Services
 {
@@ -389,7 +393,7 @@ namespace ESAPI_EQD2Viewer.Services
             }
 
             // Histogram for DVH
-            int numBins = RenderConstants.DvhHistogramBins;
+            int numBins = DomainConstants.DvhHistogramBins;
             double binWidth = maxDoseGy * 1.1 / numBins;
             long[] histogram = new long[numBins];
             long totalVoxels = 0;
@@ -772,11 +776,11 @@ namespace ESAPI_EQD2Viewer.Services
                         foreach (var contour in contours)
                         {
                             if (contour.Length < 3) continue;
-                            var pixelPoints = new Point[contour.Length];
+                            var pixelPoints = new Point2D[contour.Length];
                             for (int i = 0; i < contour.Length; i++)
                             {
                                 double dx = contour[i].x - imgOx, dy = contour[i].y - imgOy, dz = contour[i].z - imgOz;
-                                pixelPoints[i] = new Point(
+                                pixelPoints[i] = new Point2D(
                                     (dx * xDirX + dy * xDirY + dz * xDirZ) / xRes,
                                     (dx * yDirX + dy * yDirY + dz * yDirZ) / yRes);
                             }
@@ -827,8 +831,8 @@ namespace ESAPI_EQD2Viewer.Services
             for (int z = 0; z < dz; z++) { doseVoxels[z] = new int[dx, dy]; dose.GetVoxels(z, doseVoxels[z]); }
 
             DoseValue dv0 = dose.VoxelToDoseValue(0);
-            DoseValue dvRef = dose.VoxelToDoseValue(RenderConstants.DoseCalibrationRawValue);
-            double rawScale = (dvRef.Dose - dv0.Dose) / (double)RenderConstants.DoseCalibrationRawValue;
+            DoseValue dvRef = dose.VoxelToDoseValue(DomainConstants.DoseCalibrationRawValue);
+            double rawScale = (dvRef.Dose - dv0.Dose) / (double)DomainConstants.DoseCalibrationRawValue;
             double rawOffset = dv0.Dose;
             double unitToGy;
             if (dvRef.Unit == DoseValue.DoseUnit.Percent) unitToGy = entry.TotalDoseGy / 100.0;

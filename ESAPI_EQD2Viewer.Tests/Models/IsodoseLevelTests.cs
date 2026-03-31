@@ -1,6 +1,7 @@
 ﻿using Xunit;
 using FluentAssertions;
 using ESAPI_EQD2Viewer.Core.Models;
+using EQD2Viewer.Core.Models;
 using System.Linq;
 
 namespace ESAPI_EQD2Viewer.Tests.Models
@@ -215,14 +216,14 @@ namespace ESAPI_EQD2Viewer.Tests.Models
         [Fact]
         public void DvhResolution_ShouldBePositive()
         {
-            RenderConstants.DvhSamplingResolution.Should().BeGreaterThan(0);
-            RenderConstants.DvhHistogramBins.Should().BeGreaterThan(100);
+            DomainConstants.DvhSamplingResolution.Should().BeGreaterThan(0);
+            DomainConstants.DvhHistogramBins.Should().BeGreaterThan(100);
         }
 
         [Fact]
         public void HuOffset_ShouldBe32768()
         {
-            RenderConstants.HuOffsetValue.Should().Be(32768,
+            DomainConstants.HuOffsetValue.Should().Be(32768,
                 "DICOM unsigned-to-signed HU offset is 2^15");
         }
 
@@ -230,7 +231,7 @@ namespace ESAPI_EQD2Viewer.Tests.Models
         public void NormalizationThreshold_ShouldDistinguishPercentFromFraction()
         {
             // Values < 5 are assumed to be fractions (0-1), ≥5 are percentages
-            RenderConstants.NormalizationFractionThreshold.Should().Be(5.0);
+            DomainConstants.NormalizationFractionThreshold.Should().Be(5.0);
         }
     }
 }

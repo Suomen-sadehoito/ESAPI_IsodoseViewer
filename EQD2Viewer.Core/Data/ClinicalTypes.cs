@@ -205,10 +205,7 @@ namespace ESAPI_EQD2Viewer.Core.Data
         /// Key: slice index.  Value: list of polygons (each polygon is array of [x,y,z] points in mm).
         /// </summary>
         public Dictionary<int, List<double[][]>> ContoursBySlice { get; set; }
-            = new Dictionary<int, List<double[][]>>();
-
-        public System.Windows.Media.Color MediaColor =>
-            System.Windows.Media.Color.FromArgb(ColorA, ColorR, ColorG, ColorB);
+            = new Dictionary<int, List<double[][]>>();      
     }
 
     // ═══════════════════════════════════════════════════════════════

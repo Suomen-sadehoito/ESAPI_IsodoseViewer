@@ -25,10 +25,12 @@
 		<PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
 		<PackageReference Include="FluentAssertions" Version="6.12.0" />
 		<PackageReference Include="Moq" Version="4.20.70" />
-		<PackageReference Include="System.Text.Json" Version="8.0.5" />
+		<PackageReference Include="System.Text.Json" Version="10.0.5" />
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\EQD2Viewer.Core\EQD2Viewer.Core.csproj" />
+		<ProjectReference Include="..\EQD2Viewer.Fixtures\EQD2Viewer.Fixtures.csproj" />
 		<ProjectReference Include="..\ESAPI_EQD2Viewer\ESAPI_EQD2Viewer.csproj">
 			<PrivateAssets>all</PrivateAssets>
 		</ProjectReference>
@@ -66,9 +68,7 @@
 		kautta (esim. vanhasta bin-kansiosta), poistetaan se resolve-vaiheessa
 		kun oikeat ESAPI DLL:t ovat käytössä. Estää CS0433-konfliktin.
 	-->
-	<Target Name="RemoveStaleStubs"
-			AfterTargets="ResolveAssemblyReferences"
-			Condition="'$(HasRealEsapi)' == 'true'">
+	<Target Name="RemoveStaleStubs" AfterTargets="ResolveAssemblyReferences" Condition="'$(HasRealEsapi)' == 'true'">
 		<ItemGroup>
 			<ReferencePath Remove="@(ReferencePath)" Condition="'%(FileName)' == 'ESAPI_EQD2Viewer.Stubs'" />
 			<ReferenceDependencyPaths Remove="@(ReferenceDependencyPaths)" Condition="'%(FileName)' == 'ESAPI_EQD2Viewer.Stubs'" />

@@ -1,7 +1,8 @@
+using EQD2Viewer.Core.Data;
 using System;
 using System.Collections.Generic;
 using System.Windows;
-using ESAPI_EQD2Viewer.Core.Logging;
+using EQD2Viewer.Core.Logging;
 
 namespace ESAPI_EQD2Viewer.Core.Calculations
 {
@@ -27,7 +28,7 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
         /// <param name="width">CT image width in pixels</param>
         /// <param name="height">CT image height in pixels</param>
         /// <returns>Boolean mask [width * height], true = inside structure</returns>
-        public static bool[] RasterizePolygon(Point[] polygonPoints, int width, int height)
+        public static bool[] RasterizePolygon(Point2D[] polygonPoints, int width, int height)
         {
             bool[] mask = new bool[width * height];
             if (polygonPoints == null || polygonPoints.Length < 3)
@@ -124,7 +125,7 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
         /// <param name="yDirX">CT Y-direction X component</param>
         /// <param name="yDirY">CT Y-direction Y component</param>
         /// <returns>Points in CT pixel coordinates</returns>
-        public static Point[] WorldToPixel(
+        public static Point2D[] WorldToPixel(
             double[][] worldPoints,
             double imageOriginX, double imageOriginY, double imageOriginZ,
             double pixelSpacingX, double pixelSpacingY,
@@ -133,7 +134,7 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
         {
             if (worldPoints == null) return null;
 
-            var pixels = new Point[worldPoints.Length];
+            var pixels = new Point2D[worldPoints.Length];
             for (int i = 0; i < worldPoints.Length; i++)
             {
                 double dx = worldPoints[i][0] - imageOriginX;
@@ -144,7 +145,7 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
                 double px = (dx * xDirX + dy * xDirY + dz * xDirZ) / pixelSpacingX;
                 double py = (dx * yDirX + dy * yDirY + dz * yDirZ) / pixelSpacingY;
 
-                pixels[i] = new Point(px, py);
+                pixels[i] = new Point2D(px, py);
             }
 
             return pixels;

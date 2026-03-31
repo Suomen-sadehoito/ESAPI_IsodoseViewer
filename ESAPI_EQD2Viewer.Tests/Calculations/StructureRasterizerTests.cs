@@ -1,9 +1,9 @@
 ﻿using Xunit;
 using FluentAssertions;
 using ESAPI_EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Data;
 using System.Collections.Generic;
 using System.Linq;
-using Point = System.Windows.Point;  // ← tämä ratkaisee ambiguity-ongelman
 
 namespace ESAPI_EQD2Viewer.Tests.Calculations
 {
@@ -21,10 +21,10 @@ namespace ESAPI_EQD2Viewer.Tests.Calculations
         public void RasterizePolygon_FullImageRectangle_ShouldFillEntireGrid()
         {
             int w = 10, h = 10;
-            var polygon = new Point[]
+            var polygon = new Point2D[]
             {
-                new Point(0, 0), new Point(10, 0),
-                new Point(10, 10), new Point(0, 10)
+                new Point2D(0, 0), new Point2D(10, 0),
+                new Point2D(10, 10), new Point2D(0, 10)
             };
 
             bool[] mask = StructureRasterizer.RasterizePolygon(polygon, w, h);
@@ -41,10 +41,10 @@ namespace ESAPI_EQD2Viewer.Tests.Calculations
         {
             int w = 20, h = 20;
             // Square from (5,5) to (15,15)
-            var polygon = new Point[]
+            var polygon = new Point2D[]
             {
-                new Point(5, 5), new Point(15, 5),
-                new Point(15, 15), new Point(5, 15)
+                new Point2D(5, 5), new Point2D(15, 5),
+                new Point2D(15, 15), new Point2D(5, 15)
             };
 
             bool[] mask = StructureRasterizer.RasterizePolygon(polygon, w, h);
@@ -61,9 +61,9 @@ namespace ESAPI_EQD2Viewer.Tests.Calculations
         public void RasterizePolygon_Triangle_ShouldFillCorrectArea()
         {
             int w = 20, h = 20;
-            var triangle = new Point[]
+            var triangle = new Point2D[]
             {
-                new Point(10, 2), new Point(18, 18), new Point(2, 18)
+                new Point2D(10, 2), new Point2D(18, 18), new Point2D(2, 18)
             };
 
             bool[] mask = StructureRasterizer.RasterizePolygon(triangle, w, h);
@@ -90,7 +90,7 @@ namespace ESAPI_EQD2Viewer.Tests.Calculations
         public void RasterizePolygon_TooFewPoints_ShouldReturnEmptyMask()
         {
             bool[] mask = StructureRasterizer.RasterizePolygon(
-                new Point[] { new Point(0, 0), new Point(1, 1) }, 10, 10);
+                new Point2D[] { new Point2D(0, 0), new Point2D(1, 1) }, 10, 10);
             mask.All(v => !v).Should().BeTrue("degenerate polygon should produce empty mask");
         }
 
@@ -98,10 +98,10 @@ namespace ESAPI_EQD2Viewer.Tests.Calculations
         public void RasterizePolygon_PolygonOutsideGrid_ShouldReturnEmptyMask()
         {
             int w = 10, h = 10;
-            var polygon = new Point[]
+            var polygon = new Point2D[]
             {
-                new Point(20, 20), new Point(30, 20),
-                new Point(30, 30), new Point(20, 30)
+                new Point2D(20, 20), new Point2D(30, 20),
+                new Point2D(30, 30), new Point2D(20, 30)
             };
 
             bool[] mask = StructureRasterizer.RasterizePolygon(polygon, w, h);
@@ -112,10 +112,10 @@ namespace ESAPI_EQD2Viewer.Tests.Calculations
         public void RasterizePolygon_VerySmallPolygon_ShouldNotCrash()
         {
             int w = 100, h = 100;
-            var polygon = new Point[]
+            var polygon = new Point2D[]
             {
-                new Point(50, 50), new Point(50.1, 50),
-                new Point(50.1, 50.1), new Point(50, 50.1)
+                new Point2D(50, 50), new Point2D(50.1, 50),
+                new Point2D(50.1, 50.1), new Point2D(50, 50.1)
             };
 
             var action = () => StructureRasterizer.RasterizePolygon(polygon, w, h);
@@ -130,13 +130,13 @@ namespace ESAPI_EQD2Viewer.Tests.Calculations
         public void RasterizePolygon_LargerPolygon_ShouldHaveMorePixels()
         {
             int w = 50, h = 50;
-            var small = new Point[] {
-                new Point(20, 20), new Point(30, 20),
-                new Point(30, 30), new Point(20, 30)
+            var small = new Point2D[] {
+                new Point2D(20, 20), new Point2D(30, 20),
+                new Point2D(30, 30), new Point2D(20, 30)
             };
-            var large = new Point[] {
-                new Point(10, 10), new Point(40, 10),
-                new Point(40, 40), new Point(10, 40)
+            var large = new Point2D[] {
+                new Point2D(10, 10), new Point2D(40, 10),
+                new Point2D(40, 40), new Point2D(10, 40)
             };
 
             bool[] maskSmall = StructureRasterizer.RasterizePolygon(small, w, h);

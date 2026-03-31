@@ -2,10 +2,14 @@ using System;
 using System.Windows;
 using VMS.TPS.Common.Model.API;
 using ESAPI_EQD2Viewer.Core.Interfaces;
-using ESAPI_EQD2Viewer.Core.Logging;
+using EQD2Viewer.Core.Logging;
 using ESAPI_EQD2Viewer.Services;
 using ESAPI_EQD2Viewer.UI.ViewModels;
 using ESAPI_EQD2Viewer.UI.Views;
+using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Models;
+using EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Logging;
 
 [assembly: ESAPIScript(IsWriteable = false)]
 namespace VMS.TPS

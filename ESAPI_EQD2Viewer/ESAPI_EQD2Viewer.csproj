@@ -84,33 +84,21 @@
     <ProjectReference Include="..\ESAPI_EQD2Viewer.Stubs\ESAPI_EQD2Viewer.Stubs.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\EQD2Viewer.Core\EQD2Viewer.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Adapters\EsapiDataSource.cs" />
-    <Compile Include="Core\Calculations\ColorMaps.cs" />
-    <Compile Include="Core\Calculations\EQD2Calculator.cs" />
-    <Compile Include="Core\Calculations\ImageUtils.cs" />
-    <Compile Include="Core\Calculations\MarchingSquares.cs" />
-    <Compile Include="Core\Calculations\MatrixMath.cs" />
-    <Compile Include="Core\Calculations\StructureRasterizer.cs" />
-    <Compile Include="Core\Data\ClinicalTypes.cs" />
-    <Compile Include="Core\Data\Vec3.cs" />
     <Compile Include="Core\Extensions\VVectorExtensions.cs" />
-    <Compile Include="Core\Interfaces\IClinicalDataSource.cs" />
     <Compile Include="Core\Interfaces\IDVHService.cs" />
     <Compile Include="Core\Interfaces\IDebugExportService.cs" />
     <Compile Include="Core\Interfaces\IImageRenderingService.cs" />
     <Compile Include="Core\Interfaces\ISummationService.cs" />
-    <Compile Include="Core\Logging\SimpleLogger.cs" />
-    <Compile Include="Core\Models\CalculationSettings.cs" />
-    <Compile Include="Core\Models\DoseDisplayMode.cs" />
-    <Compile Include="Core\Models\DVHSummary.cs" />
-    <Compile Include="Core\Models\EQD2Settings.cs" />
+    <Compile Include="Core\Models\EQD2MeanMethod.cs" />
     <Compile Include="Core\Models\IsodoseContourData.cs" />
     <Compile Include="Core\Models\IsodoseLevel.cs" />
     <Compile Include="Core\Models\RenderConstants.cs" />
     <Compile Include="Core\Models\RenderResult.cs" />
     <Compile Include="Core\Models\StructureContourData.cs" />
-    <Compile Include="Core\Models\DoseVolumePoint.cs" />
-    <Compile Include="Core\Models\SummationConfig.cs" />
     <Compile Include="Services\DVHService.cs" />
     <Compile Include="Services\DebugExportService.cs" />
     <Compile Include="Services\ExportService.cs" />
@@ -174,6 +162,12 @@
     </PackageReference>
     <PackageReference Include="OxyPlot.Core" Version="2.2.0" />
     <PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EQD2Viewer.Core\EQD2Viewer.Core.csproj">
+      <Project>{4aecd0f8-4bda-4450-a70f-0782c2bc3d3c}</Project>
+      <Name>EQD2Viewer.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

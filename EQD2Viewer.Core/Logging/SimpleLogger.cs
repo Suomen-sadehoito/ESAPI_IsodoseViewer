@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 
-namespace ESAPI_EQD2Viewer.Core.Logging
+namespace EQD2Viewer.Core.Logging
 {
     /// <summary>
     /// Lightweight logger for ESAPI scripts. Writes to Debug output and optionally to file.

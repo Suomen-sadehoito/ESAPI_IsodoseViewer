@@ -1,4 +1,4 @@
-using ESAPI_EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Calculations;
 using ESAPI_EQD2Viewer.Core.Models;
 using ESAPI_EQD2Viewer.Services;
 using OxyPlot;
@@ -8,6 +8,8 @@ using System.ComponentModel;
 using System.Linq;
 using VMS.TPS.Common.Model.API;
 using VMS.TPS.Common.Model.Types;
+using EQD2Viewer.Core.Models;
+using EQD2Viewer.Core.Data;
 
 namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
@@ -84,8 +86,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                     _numberOfFractions, alphaBeta, _meanMethod));
 
                 var curveInGy = entry.DVHData.CurveData.Select(p =>
-                    new DVHPoint(new DoseValue(ConvertDoseToGy(p.DoseValue), DoseValue.DoseUnit.Gy),
-                        p.Volume, p.VolumeUnit)).ToArray();
+                    new DoseVolumePoint(ConvertDoseToGy(p.DoseValue), p.Volume)).ToArray();
 
                 var eqd2Curve = EQD2Calculator.ConvertCurveToEQD2(curveInGy, _numberOfFractions, alphaBeta);
                 var color = OxyColor.FromArgb(entry.Structure.Color.A, entry.Structure.Color.R,
@@ -98,7 +99,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                     Tag = $"EQD2_{entry.Plan.Id}_{entry.Structure.Id}",
                     Color = color, StrokeThickness = 2
                 };
-                eqd2Series.Points.AddRange(eqd2Curve.Select(p => new DataPoint(p.DoseValue.Dose, p.Volume)));
+                eqd2Series.Points.AddRange(eqd2Curve.Select(p => new DataPoint(p.DoseGy, p.VolumePercent)));
                 PlotModel.Series.Add(eqd2Series);
             }
             RefreshPlot();

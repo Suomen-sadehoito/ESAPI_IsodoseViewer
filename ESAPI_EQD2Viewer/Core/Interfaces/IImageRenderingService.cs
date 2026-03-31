@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Windows.Media.Imaging;
-using VMS.TPS.Common.Model.API;
-using ESAPI_EQD2Viewer.Core.Models;
 using ESAPI_EQD2Viewer.Core.Data;
+using ESAPI_EQD2Viewer.Core.Models;
+using VMS.TPS.Common.Model.API;
 
 namespace ESAPI_EQD2Viewer.Core.Interfaces
 {

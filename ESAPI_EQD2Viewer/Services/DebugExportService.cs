@@ -6,6 +6,7 @@ using VMS.TPS.Common.Model.Types;
 using ESAPI_EQD2Viewer.Core.Extensions;
 using ESAPI_EQD2Viewer.Core.Interfaces;
 using ESAPI_EQD2Viewer.Core.Models;
+using EQD2Viewer.Core.Models;
 
 namespace ESAPI_EQD2Viewer.Services
 {
@@ -48,10 +49,10 @@ namespace ESAPI_EQD2Viewer.Services
 
                     sw.WriteLine("\n--- 4. SCALING FACTORS ---");
                     DoseValue dv0 = dose.VoxelToDoseValue(0);
-                    DoseValue dv10k = dose.VoxelToDoseValue(RenderConstants.DoseCalibrationRawValue);
+                    DoseValue dv10k = dose.VoxelToDoseValue(DomainConstants.DoseCalibrationRawValue);
                     double gy0 = (dv0.Unit == DoseValue.DoseUnit.cGy) ? dv0.Dose / 100.0 : dv0.Dose;
                     double gyRef = (dv10k.Unit == DoseValue.DoseUnit.cGy) ? dv10k.Dose / 100.0 : dv10k.Dose;
-                    double dScale = (gyRef - gy0) / (double)RenderConstants.DoseCalibrationRawValue;
+                    double dScale = (gyRef - gy0) / (double)DomainConstants.DoseCalibrationRawValue;
                     sw.WriteLine($"Calculated Offset (Gy): {gy0}");
                     sw.WriteLine($"Calculated Scale (Gy/RawUnit): {dScale:E8}");
 

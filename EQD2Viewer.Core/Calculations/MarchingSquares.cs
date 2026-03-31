@@ -1,6 +1,7 @@
+using EQD2Viewer.Core.Models;
+using EQD2Viewer.Core.Data;
 using System;
 using System.Collections.Generic;
-using System.Windows;
 using ESAPI_EQD2Viewer.Core.Models;
 
 namespace ESAPI_EQD2Viewer.Core.Calculations
@@ -11,10 +12,10 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
     /// </summary>
     public static class MarchingSquares
     {
-        public static List<List<Point>> GenerateContours(double[] field, int width, int height, double threshold)
+        public static List<List<Point2D>> GenerateContours(double[] field, int width, int height, double threshold)
         {
             if (field == null || field.Length == 0 || width < 2 || height < 2)
-                return new List<List<Point>>();
+                return new List<List<Point2D>>();
 
             var segments = new List<Segment>();
 
@@ -38,10 +39,10 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
 
                     if (c == 0 || c == 15) continue;
 
-                    Point top = LerpEdge(x, y, x + 1, y, tl, tr, threshold);
-                    Point right = LerpEdge(x + 1, y, x + 1, y + 1, tr, br, threshold);
-                    Point bottom = LerpEdge(x, y + 1, x + 1, y + 1, bl, br, threshold);
-                    Point left = LerpEdge(x, y, x, y + 1, tl, bl, threshold);
+                    Point2D top = LerpEdge(x, y, x + 1, y, tl, tr, threshold);
+                    Point2D right = LerpEdge(x + 1, y, x + 1, y + 1, tr, br, threshold);
+                    Point2D bottom = LerpEdge(x, y + 1, x + 1, y + 1, bl, br, threshold);
+                    Point2D left = LerpEdge(x, y, x, y + 1, tl, bl, threshold);
 
                     switch (c)
                     {
@@ -76,35 +77,35 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
             return ChainSegments(segments);
         }
 
-        private static Point LerpEdge(int x1, int y1, int x2, int y2,
+        private static Point2D LerpEdge(int x1, int y1, int x2, int y2,
             double v1, double v2, double threshold)
         {
             double denom = v2 - v1;
             double t = (denom != 0) ? (threshold - v1) / denom : 0.5;
             if (t < 0) t = 0;
             if (t > 1) t = 1;
-            return new Point(x1 + t * (x2 - x1), y1 + t * (y2 - y1));
+            return new Point2D(x1 + t * (x2 - x1), y1 + t * (y2 - y1));
         }
 
         #region Segment Chaining
 
         private struct Segment
         {
-            public Point A, B;
-            public Segment(Point a, Point b) { A = a; B = b; }
+            public Point2D A, B;
+            public Segment(Point2D a, Point2D b) { A = a; B = b; }
         }
 
-        private static long PointKey(Point p)
+        private static long PointKey(Point2D p)
         {
-            long x = (long)(p.X * RenderConstants.PointQuantization + 0.5);
-            long y = (long)(p.Y * RenderConstants.PointQuantization + 0.5);
-            return x * RenderConstants.PointHashMultiplier + y;
+            long x = (long)(p.X * DomainConstants.PointQuantization + 0.5);
+            long y = (long)(p.Y * DomainConstants.PointQuantization + 0.5);
+            return x * DomainConstants.PointHashMultiplier + y;
         }
 
-        private static List<List<Point>> ChainSegments(List<Segment> segments)
+        private static List<List<Point2D>> ChainSegments(List<Segment> segments)
         {
             if (segments.Count == 0)
-                return new List<List<Point>>();
+                return new List<List<Point2D>>();
 
             var adjacency = new Dictionary<long, List<int>>(segments.Count * 2);
 
@@ -123,14 +124,14 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
             }
 
             var used = new bool[segments.Count];
-            var chains = new List<List<Point>>();
+            var chains = new List<List<Point2D>>();
 
             for (int i = 0; i < segments.Count; i++)
             {
                 if (used[i]) continue;
                 used[i] = true;
 
-                var chain = new List<Point>(32);
+                var chain = new List<Point2D>(32);
                 chain.Add(segments[i].A);
                 chain.Add(segments[i].B);
 
@@ -144,12 +145,12 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
             return chains;
         }
 
-        private static void ExtendChain(List<Point> chain, bool fromStart,
+        private static void ExtendChain(List<Point2D> chain, bool fromStart,
             List<Segment> segments, Dictionary<long, List<int>> adjacency, bool[] used)
         {
             while (true)
             {
-                Point endpoint = fromStart ? chain[0] : chain[chain.Count - 1];
+                Point2D endpoint = fromStart ? chain[0] : chain[chain.Count - 1];
                 long key = PointKey(endpoint);
 
                 if (!adjacency.TryGetValue(key, out var neighbors))
@@ -165,7 +166,7 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
                 used[nextIdx] = true;
 
                 var seg = segments[nextIdx];
-                Point newPoint = (PointKey(seg.A) == key) ? seg.B : seg.A;
+                Point2D newPoint = (PointKey(seg.A) == key) ? seg.B : seg.A;
 
                 if (fromStart) chain.Insert(0, newPoint);
                 else chain.Add(newPoint);

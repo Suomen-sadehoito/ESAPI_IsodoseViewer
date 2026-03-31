@@ -84,6 +84,12 @@
     <Compile Include="FixtureExporter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EQD2Viewer.Core\EQD2Viewer.Core.csproj">
+      <Project>{4aecd0f8-4bda-4450-a70f-0782c2bc3d3c}</Project>
+      <Name>EQD2Viewer.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- Turvamekanismi: Poistaa Stubs-assemblyn jos se vuotaa buildiin -->
   <Target Name="RemoveStaleStubs" AfterTargets="ResolveAssemblyReferences" Condition="'$(HasRealEsapi)' == 'true'">

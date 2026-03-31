@@ -2,7 +2,11 @@ using System;
 using System.Linq;
 using VMS.TPS.Common.Model.API;
 using VMS.TPS.Common.Model.Types;
-using ESAPI_EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Interfaces;
+using EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Logging;
+using EQD2Viewer.Core.Models;
 using ESAPI_EQD2Viewer.Core.Interfaces;
 using ESAPI_EQD2Viewer.Core.Models;
 
@@ -14,7 +18,7 @@ namespace ESAPI_EQD2Viewer.Services
         {
             return plan.GetDVHCumulativeData(structure,
                 DoseValuePresentation.Absolute, VolumePresentation.Relative,
-                RenderConstants.DvhSamplingResolution);
+                DomainConstants.DvhSamplingResolution);
         }
 
         public DVHSummary BuildPhysicalSummary(PlanSetup plan, Structure structure, DVHData dvhData)
@@ -40,9 +44,9 @@ namespace ESAPI_EQD2Viewer.Services
 
             if (meanMethod == EQD2MeanMethod.Differential)
             {
-                var curveInGy = dvhData.CurveData.Select(p => new DVHPoint(
-                    new DoseValue(ConvertToGy(p.DoseValue), DoseValue.DoseUnit.Gy),
-                    p.Volume, p.VolumeUnit)).ToArray();
+                var curveInGy = dvhData.CurveData.Select(p => new DoseVolumePoint(
+                    ConvertToGy(p.DoseValue),
+                    p.Volume)).ToArray();
                 eqd2Dmean = EQD2Calculator.CalculateMeanEQD2FromDVH(curveInGy, numberOfFractions, alphaBeta);
             }
             else
@@ -64,7 +68,7 @@ namespace ESAPI_EQD2Viewer.Services
             if (summedSlices == null || structureMasks == null || maxDoseGy <= 0)
                 return new DoseVolumePoint[0];
 
-            int numBins = RenderConstants.DvhHistogramBins;
+            int numBins = DomainConstants.DvhHistogramBins;
             double binWidth = maxDoseGy * 1.1 / numBins;
             long[] histogram = new long[numBins];
             long totalVoxels = 0;

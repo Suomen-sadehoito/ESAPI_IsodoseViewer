@@ -6,12 +6,14 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using VMS.TPS.Common.Model.API;
 using VMS.TPS.Common.Model.Types;
-using ESAPI_EQD2Viewer.Core.Interfaces;
-using ESAPI_EQD2Viewer.Core.Extensions;
+using ESAPI_EQD2Viewer.Core.Data;
 using ESAPI_EQD2Viewer.Core.Models;
+using ESAPI_EQD2Viewer.Core.Interfaces;
 using ESAPI_EQD2Viewer.Core.Calculations;
-using ESAPI_EQD2Viewer.Core.Logging;
-using ESAPI_EQD2Viewer.Core.Data; // Required for VolumeData, DoseVolumeData, StructureData
+using ESAPI_EQD2Viewer.Core.Extensions;
+using EQD2Viewer.Core.Logging;
+using EQD2Viewer.Core.Models;
+using EQD2Viewer.Core.Calculations;
 
 namespace ESAPI_EQD2Viewer.Services
 {
@@ -83,9 +85,9 @@ namespace ESAPI_EQD2Viewer.Services
                 }
 
                 DoseValue dv0 = dose.VoxelToDoseValue(0);
-                DoseValue dvRef = dose.VoxelToDoseValue(RenderConstants.DoseCalibrationRawValue);
+                DoseValue dvRef = dose.VoxelToDoseValue(DomainConstants.DoseCalibrationRawValue);
 
-                _doseRawScale = (dvRef.Dose - dv0.Dose) / (double)RenderConstants.DoseCalibrationRawValue;
+                _doseRawScale = (dvRef.Dose - dv0.Dose) / (double)DomainConstants.DoseCalibrationRawValue;
                 _doseRawOffset = dv0.Dose;
 
                 if (dvRef.Unit == DoseValue.DoseUnit.Percent)
@@ -198,11 +200,11 @@ namespace ESAPI_EQD2Viewer.Services
             double normalization = planNormalization;
             if (double.IsNaN(normalization) || normalization <= 0)
                 normalization = 100.0;
-            else if (normalization < RenderConstants.NormalizationFractionThreshold)
+            else if (normalization < DomainConstants.NormalizationFractionThreshold)
                 normalization *= 100.0;
 
             double referenceDoseGy = prescriptionGy * (normalization / 100.0);
-            if (referenceDoseGy < RenderConstants.MinReferenceDoseGy)
+            if (referenceDoseGy < DomainConstants.MinReferenceDoseGy)
                 referenceDoseGy = prescriptionGy;
 
             bool eqd2Active = eqd2Settings != null && eqd2Settings.IsEnabled
@@ -362,9 +364,9 @@ namespace ESAPI_EQD2Viewer.Services
                     foreach (var chain in polylines)
                     {
                         if (chain.Count < 2) continue;
-                        ctx.BeginFigure(chain[0], false, false);
+                        ctx.BeginFigure(new System.Windows.Point(chain[0].X, chain[0].Y), false, false);
                         for (int j = 1; j < chain.Count; j++)
-                            ctx.LineTo(chain[j], true, false);
+                            ctx.LineTo(new System.Windows.Point(chain[j].X, chain[j].Y), true, false);
                     }
                 }
                 geometry.Freeze();
@@ -499,10 +501,10 @@ namespace ESAPI_EQD2Viewer.Services
             double prescriptionGy = planTotalDoseGy;
             double normalization = planNormalization;
             if (double.IsNaN(normalization) || normalization <= 0) normalization = 100.0;
-            else if (normalization < RenderConstants.NormalizationFractionThreshold) normalization *= 100.0;
+            else if (normalization < DomainConstants.NormalizationFractionThreshold) normalization *= 100.0;
 
             double referenceDoseGy = prescriptionGy * (normalization / 100.0);
-            if (referenceDoseGy < RenderConstants.MinReferenceDoseGy)
+            if (referenceDoseGy < DomainConstants.MinReferenceDoseGy)
                 referenceDoseGy = prescriptionGy;
 
             bool eqd2Active = eqd2Settings != null && eqd2Settings.IsEnabled
@@ -684,9 +686,9 @@ namespace ESAPI_EQD2Viewer.Services
                     foreach (var chain in polylines)
                     {
                         if (chain.Count < 2) continue;
-                        ctx.BeginFigure(chain[0], false, false);
+                        ctx.BeginFigure(new System.Windows.Point(chain[0].X, chain[0].Y), false, false);
                         for (int j = 1; j < chain.Count; j++)
-                            ctx.LineTo(chain[j], true, false);
+                            ctx.LineTo(new System.Windows.Point(chain[j].X, chain[j].Y), true, false);
                     }
                 }
                 geometry.Freeze();
@@ -738,14 +740,14 @@ namespace ESAPI_EQD2Viewer.Services
 
                             if (pixels == null || pixels.Length < 3) continue;
 
-                            ctx.BeginFigure(pixels[0], false, true);
+                            ctx.BeginFigure(new System.Windows.Point(pixels[0].X, pixels[0].Y), false, true);
                             for (int i = 1; i < pixels.Length; i++)
-                                ctx.LineTo(pixels[i], true, false);
+                                ctx.LineTo(new System.Windows.Point(pixels[i].X, pixels[i].Y), true, false);
                         }
                     }
                     geometry.Freeze();
 
-                    var brush = new SolidColorBrush(structure.MediaColor);
+                    var brush = new SolidColorBrush(Color.FromArgb(structure.ColorA, structure.ColorR, structure.ColorG, structure.ColorB));
                     brush.Freeze();
 
                     var contourData = new StructureContourData

@@ -1,7 +1,8 @@
 ﻿using Xunit;
 using FluentAssertions;
 using ESAPI_EQD2Viewer.Core.Calculations;
-using ESAPI_EQD2Viewer.Tests.Integration.Models;
+using EQD2Viewer.Fixtures;
+using EQD2Viewer.Core.Calculations;
 using System.Linq;
 
 namespace ESAPI_EQD2Viewer.Tests.Integration

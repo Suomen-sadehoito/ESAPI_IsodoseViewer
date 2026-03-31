@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
+using EQD2Viewer.Core.Logging;
 
 namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
@@ -57,7 +58,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             }
             catch (Exception ex)
             {
-                Core.Logging.SimpleLogger.Error("RenderScene failed", ex);
+                SimpleLogger.Error("RenderScene failed", ex);
             }
             finally { _isRendering = false; }
         }

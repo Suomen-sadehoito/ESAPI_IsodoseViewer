@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using ESAPI_EQD2Viewer.Core.Models;
+using EQD2Viewer.Core.Models;
 using OxyPlot;
 using System.Collections.ObjectModel;
 using System.Windows.Media.Imaging;
@@ -217,10 +218,10 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                     : (_plan?.PlanNormalizationValue ?? 100.0);
 
                 if (double.IsNaN(norm) || norm <= 0) norm = 100.0;
-                else if (norm < RenderConstants.NormalizationFractionThreshold) norm *= 100.0;
+                else if (norm < DomainConstants.NormalizationFractionThreshold) norm *= 100.0;
 
                 double refGy = prescGy * (norm / 100.0);
-                return refGy < RenderConstants.MinReferenceDoseGy ? prescGy : refGy;
+                return refGy < DomainConstants.MinReferenceDoseGy ? prescGy : refGy;
             }
         }
 

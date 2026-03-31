@@ -2,6 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Models;
+using EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Logging;
 using ESAPI_EQD2Viewer.Core.Models;
 
 namespace ESAPI_EQD2Viewer.Core.Interfaces

@@ -26,6 +26,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\EQD2Viewer.Core\EQD2Viewer.Core.csproj" />
+		<ProjectReference Include="..\EQD2Viewer.Fixtures\EQD2Viewer.Fixtures.csproj" />
 		<ProjectReference Include="..\ESAPI_EQD2Viewer\ESAPI_EQD2Viewer.csproj" />
 	</ItemGroup>
 

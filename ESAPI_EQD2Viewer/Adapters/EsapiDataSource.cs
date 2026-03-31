@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using VMS.TPS.Common.Model.API;
-using VMS.TPS.Common.Model.Types;
-using ESAPI_EQD2Viewer.Core.Calculations;
 using ESAPI_EQD2Viewer.Core.Data;
 using ESAPI_EQD2Viewer.Core.Interfaces;
-using ESAPI_EQD2Viewer.Core.Logging;
-using ESAPI_EQD2Viewer.Core.Models;
+using ESAPI_EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Logging;
+using EQD2Viewer.Core.Models;
+using VMS.TPS.Common.Model.API;
+using VMS.TPS.Common.Model.Types;
 
 namespace ESAPI_EQD2Viewer.Adapters
 {
@@ -247,7 +246,7 @@ namespace ESAPI_EQD2Viewer.Adapters
                 {
                     var dvh = plan.GetDVHCumulativeData(structure,
                         DoseValuePresentation.Absolute, VolumePresentation.Relative,
-                        RenderConstants.DvhSamplingResolution);
+                        DomainConstants.DvhSamplingResolution);
 
                     if (dvh?.CurveData == null || dvh.CurveData.Length == 0) continue;
 

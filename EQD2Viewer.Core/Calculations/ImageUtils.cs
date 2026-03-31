@@ -1,3 +1,4 @@
+using EQD2Viewer.Core.Models;
 using System;
 using ESAPI_EQD2Viewer.Core.Models;
 
@@ -19,7 +20,7 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
         /// <param name="ySize">Image Y dimension</param>
         public static int DetermineHuOffset(int[,] midSlice, int xSize, int ySize)
         {
-            int step = RenderConstants.HuOffsetSampleStep;
+            int step = DomainConstants.HuOffsetSampleStep;
             int countAboveThreshold = 0;
             int totalSamples = 0;
 
@@ -28,13 +29,13 @@ namespace ESAPI_EQD2Viewer.Core.Calculations
                 for (int x = 0; x < xSize; x += step)
                 {
                     totalSamples++;
-                    if (midSlice[x, y] > RenderConstants.HuOffsetRawThreshold)
+                    if (midSlice[x, y] > DomainConstants.HuOffsetRawThreshold)
                         countAboveThreshold++;
                 }
             }
 
             return (totalSamples > 0 && countAboveThreshold > totalSamples / 2)
-                ? RenderConstants.HuOffsetValue : 0;
+                ? DomainConstants.HuOffsetValue : 0;
         }
 
         /// <summary>
