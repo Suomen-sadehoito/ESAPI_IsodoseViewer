@@ -9,28 +9,15 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
     public partial class MainViewModel
     {
-        // ═══════════════════════════════════════════
-        // PATIENT & PLAN DISPLAY
-        // ═══════════════════════════════════════════
-
         public string PatientDisplayName
         {
             get
             {
-                if (_isSnapshotMode)
-                {
-                    var p = _snapshot.Patient;
-                    if (p == null) return "No patient";
-                    string name = $"{p.LastName}, {p.FirstName}";
-                    if (!string.IsNullOrEmpty(p.Id)) name += $"  ({p.Id})";
-                    return name;
-                }
-
-                if (_context?.Patient == null) return "No patient";
-                var patient = _context.Patient;
-                string n = $"{patient.LastName}, {patient.FirstName}";
-                if (!string.IsNullOrEmpty(patient.Id)) n += $"  ({patient.Id})";
-                return n;
+                var p = _snapshot?.Patient;
+                if (p == null) return "No patient";
+                string name = $"{p.LastName}, {p.FirstName}";
+                if (!string.IsNullOrEmpty(p.Id)) name += $"  ({p.Id})";
+                return name;
             }
         }
 
@@ -38,16 +25,9 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         {
             get
             {
-                if (_isSnapshotMode)
-                {
-                    var plan = _snapshot.ActivePlan;
-                    if (plan == null) return "No plan";
-                    return string.IsNullOrEmpty(plan.CourseId) ? plan.Id : $"{plan.CourseId} / {plan.Id}";
-                }
-
-                if (_plan == null) return "No plan";
-                string course = _plan.Course?.Id ?? "";
-                return string.IsNullOrEmpty(course) ? _plan.Id : $"{course} / {_plan.Id}";
+                var plan = _snapshot?.ActivePlan;
+                if (plan == null) return "No plan";
+                return string.IsNullOrEmpty(plan.CourseId) ? plan.Id : $"{plan.CourseId} / {plan.Id}";
             }
         }
 
@@ -64,25 +44,12 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         {
             get
             {
-                int fx = 0;
-                if (_isSnapshotMode)
-                {
-                    fx = _snapshot?.ActivePlan?.NumberOfFractions ?? 0;
-                }
-                else
-                {
-                    fx = _plan?.NumberOfFractions ?? 0;
-                }
-
+                int fx = _snapshot?.ActivePlan?.NumberOfFractions ?? 0;
                 if (fx <= 0) return "";
                 double gy = GetPrescriptionGy();
                 return $"{fx} fx × {(fx > 0 ? gy / fx : 0):F2} Gy";
             }
         }
-
-        // ═══════════════════════════════════════════
-        // CT IMAGE & SLICE
-        // ═══════════════════════════════════════════
 
         private WriteableBitmap _ctImageSource;
         public WriteableBitmap CtImageSource { get => _ctImageSource; set => SetProperty(ref _ctImageSource, value); }
@@ -105,16 +72,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         private string _statusText;
         public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
 
-        // ═══════════════════════════════════════════
-        // ISODOSE CONTOURS
-        // ═══════════════════════════════════════════
-
         private ObservableCollection<IsodoseContourData> _contourLines;
         public ObservableCollection<IsodoseContourData> ContourLines { get => _contourLines; set => SetProperty(ref _contourLines, value); }
-
-        // ═══════════════════════════════════════════
-        // STRUCTURE CONTOURS
-        // ═══════════════════════════════════════════
 
         private ObservableCollection<StructureContourData> _structureContourLines;
         public ObservableCollection<StructureContourData> StructureContourLines { get => _structureContourLines; set => SetProperty(ref _structureContourLines, value); }
@@ -122,16 +81,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         private bool _showStructureContours;
         public bool ShowStructureContours { get => _showStructureContours; set { if (SetProperty(ref _showStructureContours, value)) RequestRender(); } }
 
-        // ═══════════════════════════════════════════
-        // DOSE CURSOR
-        // ═══════════════════════════════════════════
-
         private string _doseCursorText = "";
         public string DoseCursorText { get => _doseCursorText; set => SetProperty(ref _doseCursorText, value); }
-
-        // ═══════════════════════════════════════════
-        // DOSE DISPLAY MODE
-        // ═══════════════════════════════════════════
 
         private DoseDisplayMode _doseDisplayMode = DoseDisplayMode.Line;
         public DoseDisplayMode DoseDisplayMode
@@ -158,10 +109,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
         private double _colorwashMinPercent = 0.10;
         public double ColorwashMinPercent { get => _colorwashMinPercent; set { if (SetProperty(ref _colorwashMinPercent, value)) RequestRender(); } }
-
-        // ═══════════════════════════════════════════
-        // ISODOSE MODE & UNIT
-        // ═══════════════════════════════════════════
 
         private IsodoseMode _isodoseMode = IsodoseMode.Relative;
         public IsodoseMode CurrentIsodoseMode
@@ -213,9 +160,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             get
             {
                 double prescGy = GetPrescriptionGy();
-                double norm = _isSnapshotMode
-                    ? (_snapshot?.ActivePlan?.PlanNormalization ?? 100.0)
-                    : (_plan?.PlanNormalizationValue ?? 100.0);
+                double norm = _snapshot?.ActivePlan?.PlanNormalization ?? 100.0;
 
                 if (double.IsNaN(norm) || norm <= 0) norm = 100.0;
                 else if (norm < DomainConstants.NormalizationFractionThreshold) norm *= 100.0;
@@ -248,12 +193,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             return _isodoseMode == IsodoseMode.Absolute ? level.AbsoluteDoseGy : referenceDoseGy * level.Fraction;
         }
 
-        // ═══════════════════════════════════════════
-        // EQD2 DISPLAY SETTINGS
-        // (Controls isodose visualization ONLY.
-        //  DVH uses per-structure α/β values.)
-        // ═══════════════════════════════════════════
-
         private bool _isEQD2Enabled;
         public bool IsEQD2Enabled
         {
@@ -261,39 +200,28 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             set { if (SetProperty(ref _isEQD2Enabled, value)) { RequestRender(); if (_dvhCache.Count > 0) RecalculateAllDVH(); } }
         }
 
-        /// <summary>
-        /// α/β ratio for isodose LINE/FILL/COLORWASH visualization only.
-        /// Changing this re-renders the current slice; does NOT re-run summation.
-        /// For summation: triggers a fast EQD2 recomputation from stored physical doses.
-        /// DVH calculations use per-structure α/β from StructureSettings instead.
-        /// </summary>
         private double _displayAlphaBeta = 3.0;
         public double DisplayAlphaBeta
         {
             get => _displayAlphaBeta;
             set
             {
-                if (value <= 0) value = 0.5; // Prevent invalid input
+                if (value <= 0) value = 0.5;
                 if (SetProperty(ref _displayAlphaBeta, value))
                 {
                     RequestRender();
-                    // Recompute display sum from stored physical doses (fast, no re-summation)
                     RecomputeDisplayEQD2IfActive();
                 }
             }
         }
 
-        /// <summary>
-        /// Number of fractions for single-plan EQD2 display.
-        /// In summation mode, each plan has its own fraction count.
-        /// </summary>
         private int _numberOfFractions = 1;
         public int NumberOfFractions
         {
             get => _numberOfFractions;
             set
             {
-                if (value < 1) value = 1; // Prevent invalid input
+                if (value < 1) value = 1;
                 if (SetProperty(ref _numberOfFractions, value))
                 {
                     RequestRender();
@@ -302,10 +230,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             }
         }
 
-        /// <summary>
-        /// Read-only display of the α/β used in the active summation.
-        /// Shown in the UI when summation is active so users know what was used.
-        /// </summary>
         private string _summationAlphaBetaLabel = "";
         public string SummationAlphaBetaLabel { get => _summationAlphaBetaLabel; set => SetProperty(ref _summationAlphaBetaLabel, value); }
 
@@ -322,10 +246,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             get => _useDifferentialMethod;
             set { if (SetProperty(ref _useDifferentialMethod, value)) MeanMethod = value ? EQD2MeanMethod.Differential : EQD2MeanMethod.Simple; }
         }
-
-        // ═══════════════════════════════════════════
-        // REGISTRATION OVERLAY
-        // ═══════════════════════════════════════════
 
         public enum OverlayMode { Off, Checkerboard, Blend }
 
@@ -362,10 +282,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
         private WriteableBitmap _overlayImageSource;
         public WriteableBitmap OverlayImageSource { get => _overlayImageSource; set => SetProperty(ref _overlayImageSource, value); }
-
-        // ═══════════════════════════════════════════
-        // DVH DISPLAY
-        // ═══════════════════════════════════════════
 
         private bool _showPhysicalDVH = true;
         public bool ShowPhysicalDVH { get => _showPhysicalDVH; set { if (SetProperty(ref _showPhysicalDVH, value)) UpdatePlotVisibility(); } }

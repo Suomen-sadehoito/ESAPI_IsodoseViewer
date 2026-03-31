@@ -1,8 +1,11 @@
 using CommunityToolkit.Mvvm.Input;
 using EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Interfaces;
+using EQD2Viewer.Core.Logging;
+using EQD2Viewer.Core.Models;
 using ESAPI_EQD2Viewer.Core.Interfaces;
 using ESAPI_EQD2Viewer.Core.Models;
-using EQD2Viewer.Core.Logging;
 using ESAPI_EQD2Viewer.Services;
 using ESAPI_EQD2Viewer.UI.Views;
 using OxyPlot;
@@ -14,11 +17,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
-using EQD2Viewer.Core.Data;
-using EQD2Viewer.Core.Models;
-using EQD2Viewer.Core.Calculations;
-using EQD2Viewer.Core.Logging;
-using ESAPI_EQD2Viewer.Core.Calculations;
 
 namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
@@ -51,7 +49,18 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         [RelayCommand]
         private async Task OpenSummationDialog()
         {
-            var dialog = new PlanSummationDialog(_context.Patient, _plan);
+            if (_summationDataLoader == null)
+            {
+                MessageBox.Show("Plan summation is not available in this mode.\n" +
+                                "Summation requires full clinical data access.",
+                                "EQD2 Viewer", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new PlanSummationDialog(
+                _snapshot.AllCourses,
+                _snapshot.Registrations,
+                _snapshot.ActivePlan);
             dialog.Owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive);
             if (dialog.ShowDialog() == true && dialog.ResultConfig != null)
                 await ExecuteSummationAsync(dialog.ResultConfig);
@@ -97,7 +106,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             try
             {
                 _summationService?.Dispose();
-                _summationService = new SummationService(_context.Patient, _context.Image);
+                _summationService = new SummationService(_snapshot.CtImage, _summationDataLoader, _snapshot.Registrations);
                 var prepResult = _summationService.PrepareData(config);
                 if (!prepResult.Success)
                 {
@@ -120,7 +129,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                     SummationInfo = $"{ml} sum: {config.Plans.Count} plans | Max: {result.MaxDoseGy:F2} Gy | Ref: {result.TotalReferenceDoseGy:F2} Gy";
                     StatusText = result.StatusMessage;
 
-                    // Sync display α/β with the summation's α/β (informational)
                     _displayAlphaBeta = config.GlobalAlphaBeta;
                     OnPropertyChanged(nameof(DisplayAlphaBeta));
                     SummationAlphaBetaLabel = $"Summation computed with α/β = {config.GlobalAlphaBeta:F1} Gy";
@@ -132,7 +140,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                         OverlayPlanOptions.Add(plan.DisplayLabel);
                     if (OverlayPlanOptions.Count > 0) SelectedOverlayPlanLabel = OverlayPlanOptions[0];
 
-                    // Calculate DVH with per-structure α/β values
                     CalculateSummationDVH(result.MaxDoseGy);
                     RequestRender();
                 }
@@ -148,15 +155,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             finally { IsSummationComputing = false; }
         }
 
-        // ═══════════════════════════════════════════
-        // Display α/β recomputation (fast, no ESAPI)
-        // ═══════════════════════════════════════════
-
-        /// <summary>
-        /// Called when DisplayAlphaBeta slider changes while summation is active.
-        /// Debounces, then recomputes the EQD2 display sum from stored per-plan physical doses.
-        /// This is MUCH cheaper than full re-summation (Phase 1 + Phase 2).
-        /// </summary>
         internal void RecomputeDisplayEQD2IfActive()
         {
             if (!_isSummationActive || _summationService == null) return;
@@ -201,7 +199,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                     RequestRender();
                 }
             }
-            catch (OperationCanceledException) { /* Normal during rapid slider movement */ }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
                 SimpleLogger.Error("RecomputeDisplayEQD2 failed", ex);
@@ -209,15 +207,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             finally { IsSummationComputing = false; }
         }
 
-        // ═══════════════════════════════════════════
-        // SUMMATION DVH — Per-structure α/β
-        // ═══════════════════════════════════════════
-
-        /// <summary>
-        /// Calculates DVH for each selected structure using that structure's own α/β value.
-        /// Uses ComputeStructureEQD2DVH which correctly applies per-plan fractionation
-        /// with the structure-specific α/β for each plan's contribution.
-        /// </summary>
         private void CalculateSummationDVH(double maxDoseGy)
         {
             if (_summationService == null || !_summationService.HasSummedDose) return;
@@ -235,7 +224,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             {
                 if (!selectedIds.Contains(structureId)) continue;
 
-                // ── KEY CHANGE: use per-structure α/β ──
                 var structureSetting = StructureSettings.FirstOrDefault(s => s.Id == structureId);
                 double structureAlphaBeta = structureSetting?.AlphaBeta ?? 3.0;
                 string methodLabel = isEqd2Sum ? $"EQD2 α/β={structureAlphaBeta:F1}" : "Physical Sum";
@@ -244,13 +232,11 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
                 if (isEqd2Sum)
                 {
-                    // Per-structure EQD2 DVH using stored per-plan physical doses
                     dvhPoints = _summationService.ComputeStructureEQD2DVH(
                         structureId, structureAlphaBeta, maxDoseGy);
                 }
                 else
                 {
-                    // Physical sum — use the existing summed slices directly
                     double[][] summedSlices = new double[sliceCount][];
                     bool[][] masks = new bool[sliceCount][];
                     for (int z = 0; z < sliceCount; z++)
@@ -263,7 +249,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
                 if (dvhPoints == null || dvhPoints.Length == 0) continue;
 
-                // Count structure volume
                 long totalVoxels = 0;
                 for (int z = 0; z < sliceCount; z++)
                 {
@@ -276,7 +261,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
                 var cached = _dvhCache.FirstOrDefault(c => c.Structure.Id == structureId);
                 OxyColor color = cached != null
-                    ? OxyColor.FromArgb(cached.Structure.Color.A, cached.Structure.Color.R, cached.Structure.Color.G, cached.Structure.Color.B)
+                    ? OxyColor.FromArgb(cached.Structure.ColorA, cached.Structure.ColorR, cached.Structure.ColorG, cached.Structure.ColorB)
                     : OxyColors.White;
 
                 var series = new LineSeries
@@ -301,10 +286,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 SummaryData.Remove(s);
         }
 
-        // ═══════════════════════════════════════════
-        // SUMMATION RENDERING (unchanged logic)
-        // ═══════════════════════════════════════════
-
         private void RenderSummationScene()
         {
             double[] summedSlice = _summationService.GetSummedSlice(CurrentSlice);
@@ -313,10 +294,11 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             double refDose = _summationService.SummedReferenceDoseGy;
             if (refDose < DomainConstants.MinReferenceDoseGy) refDose = 1.0;
 
+            int w = _snapshot.CtImage.XSize, h = _snapshot.CtImage.YSize;
+
             if (_doseDisplayMode == DoseDisplayMode.Line)
             {
-                ClearDoseBitmap();
-                int w = _context.Image.XSize, h = _context.Image.YSize;
+                ClearDoseBitmap(w, h);
                 var contours = new ObservableCollection<IsodoseContourData>();
 
                 foreach (var level in _isodoseLevelArray)
@@ -349,13 +331,12 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             else
             {
                 if (_contourLines?.Count > 0) ContourLines = new ObservableCollection<IsodoseContourData>();
-                RenderSummedDoseBitmap(summedSlice, refDose);
+                RenderSummedDoseBitmap(summedSlice, refDose, w, h);
             }
         }
 
-        private unsafe void ClearDoseBitmap()
+        private unsafe void ClearDoseBitmap(int w, int h)
         {
-            int w = _context.Image.XSize, h = _context.Image.YSize;
             DoseImageSource.Lock();
             try
             {
@@ -366,9 +347,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             finally { DoseImageSource.Unlock(); }
         }
 
-        private unsafe void RenderSummedDoseBitmap(double[] slice, double refDose)
+        private unsafe void RenderSummedDoseBitmap(double[] slice, double refDose, int w, int h)
         {
-            int w = _context.Image.XSize, h = _context.Image.YSize;
             DoseImageSource.Lock();
             try
             {

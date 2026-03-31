@@ -1,4 +1,6 @@
 using EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Models;
 using ESAPI_EQD2Viewer.Core.Models;
 using ESAPI_EQD2Viewer.Services;
 using OxyPlot;
@@ -6,30 +8,31 @@ using OxyPlot.Series;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using VMS.TPS.Common.Model.API;
-using VMS.TPS.Common.Model.Types;
-using EQD2Viewer.Core.Models;
-using EQD2Viewer.Core.Data;
 
 namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
     public partial class MainViewModel
     {
-        public void AddStructuresForDVH(IEnumerable<Structure> structures)
+        /// <summary>
+        /// Adds structures for DVH display using DTO data from the snapshot.
+        /// </summary>
+        public void AddStructuresForDVH(IEnumerable<StructureData> structures)
         {
-            if (_plan == null || structures == null) return;
+            if (structures == null) return;
+            string planId = _snapshot?.ActivePlan?.Id ?? "";
 
             foreach (var structure in structures)
             {
                 if (_dvhCache.Any(c => c.Structure.Id == structure.Id)) continue;
 
-                DVHData dvhData = _dvhService.GetDVH(_plan, structure);
-                if (dvhData == null) continue;
+                // Find pre-computed DVH curve from snapshot
+                var dvhCurve = _snapshot?.DvhCurves?.FirstOrDefault(d => d.StructureId == structure.Id);
+                if (dvhCurve == null) continue;
 
-                _dvhCache.Add(new DVHCacheEntry { Plan = _plan, Structure = structure, DVHData = dvhData });
+                _dvhCache.Add(new DVHCacheEntry { PlanId = planId, Structure = structure, DvhCurve = dvhCurve });
 
-                if (!_visibleStructures.Any(s => s.Id == structure.Id))
-                    _visibleStructures.Add(structure);
+                if (!_visibleStructureIds.Contains(structure.Id))
+                    _visibleStructureIds.Add(structure.Id);
 
                 double defaultAB = (structure.DicomType == "PTV" || structure.DicomType == "CTV" || structure.DicomType == "GTV")
                     ? 10.0 : 3.0;
@@ -38,16 +41,17 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 settingItem.PropertyChanged += OnStructureSettingChanged;
                 StructureSettings.Add(settingItem);
 
-                SummaryData.Add(_dvhService.BuildPhysicalSummary(_plan, structure, dvhData));
+                SummaryData.Add(((DVHService)_dvhService).BuildPhysicalSummaryFromCurve(dvhCurve, planId));
 
-                var color = OxyColor.FromArgb(structure.Color.A, structure.Color.R, structure.Color.G, structure.Color.B);
+                var color = OxyColor.FromArgb(structure.ColorA, structure.ColorR, structure.ColorG, structure.ColorB);
                 var series = new LineSeries
                 {
-                    Title = $"{structure.Id} ({_plan.Id})",
-                    Tag = $"Physical_{_plan.Id}_{structure.Id}",
+                    Title = $"{structure.Id} ({planId})",
+                    Tag = $"Physical_{planId}_{structure.Id}",
                     Color = color, StrokeThickness = 2
                 };
-                series.Points.AddRange(dvhData.CurveData.Select(p => new DataPoint(ConvertDoseToGy(p.DoseValue), p.Volume)));
+                if (dvhCurve.Curve != null)
+                    series.Points.AddRange(dvhCurve.Curve.Select(p => new DataPoint(p[0], p[1])));
                 PlotModel.Series.Add(series);
             }
 
@@ -60,7 +64,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         public void ClearDVH()
         {
             _dvhCache.Clear();
-            _visibleStructures.Clear();
+            _visibleStructureIds.Clear();
             StructureSettings.Clear();
             PlotModel.Series.Clear();
             SummaryData.Clear();
@@ -82,21 +86,25 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 var setting = StructureSettings.FirstOrDefault(s => s.Structure.Id == entry.Structure.Id);
                 double alphaBeta = setting?.AlphaBeta ?? 3.0;
 
-                SummaryData.Add(_dvhService.BuildEQD2Summary(entry.Plan, entry.Structure, entry.DVHData,
-                    _numberOfFractions, alphaBeta, _meanMethod));
+                SummaryData.Add(((DVHService)_dvhService).BuildEQD2SummaryFromCurve(
+                    entry.DvhCurve, entry.PlanId, _numberOfFractions, alphaBeta, _meanMethod));
 
-                var curveInGy = entry.DVHData.CurveData.Select(p =>
-                    new DoseVolumePoint(ConvertDoseToGy(p.DoseValue), p.Volume)).ToArray();
+                DoseVolumePoint[] curveInGy = null;
+                if (entry.DvhCurve.Curve != null)
+                    curveInGy = entry.DvhCurve.Curve.Select(p => new DoseVolumePoint(p[0], p[1])).ToArray();
 
-                var eqd2Curve = EQD2Calculator.ConvertCurveToEQD2(curveInGy, _numberOfFractions, alphaBeta);
-                var color = OxyColor.FromArgb(entry.Structure.Color.A, entry.Structure.Color.R,
-                    entry.Structure.Color.G, entry.Structure.Color.B);
+                var eqd2Curve = curveInGy != null
+                    ? EQD2Calculator.ConvertCurveToEQD2(curveInGy, _numberOfFractions, alphaBeta)
+                    : new DoseVolumePoint[0];
+
+                var color = OxyColor.FromArgb(entry.Structure.ColorA, entry.Structure.ColorR,
+                    entry.Structure.ColorG, entry.Structure.ColorB);
 
                 var eqd2Series = new LineSeries
                 {
                     Title = $"{entry.Structure.Id} EQD2 (α/β={alphaBeta:F1})",
                     LineStyle = LineStyle.Dash,
-                    Tag = $"EQD2_{entry.Plan.Id}_{entry.Structure.Id}",
+                    Tag = $"EQD2_{entry.PlanId}_{entry.Structure.Id}",
                     Color = color, StrokeThickness = 2
                 };
                 eqd2Series.Points.AddRange(eqd2Curve.Select(p => new DataPoint(p.DoseGy, p.VolumePercent)));
@@ -122,8 +130,5 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         }
 
         internal void RefreshPlot() { UpdatePlotVisibility(); PlotModel.InvalidatePlot(true); }
-
-        private static double ConvertDoseToGy(DoseValue dv) =>
-            dv.Unit == DoseValue.DoseUnit.cGy ? dv.Dose / 100.0 : dv.Dose;
     }
 }

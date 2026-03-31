@@ -70,6 +70,7 @@
     <Compile Include="Data\Vec3.cs" />
     <Compile Include="Interfaces\IClinicalDataSource.cs" />
     <Compile Include="Interfaces\IDVHCalculation.cs" />
+    <Compile Include="Interfaces\ISummationDataLoader.cs" />
     <Compile Include="Logging\SimpleLogger.cs" />
     <Compile Include="Models\CalculationSettings.cs" />
     <Compile Include="Models\DomainConstants.cs" />

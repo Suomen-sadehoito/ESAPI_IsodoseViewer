@@ -8,13 +8,15 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using VMS.TPS.Common.Model.API;
-using VMS.TPS.Common.Model.Types;
-using ESAPI_EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Logging;
+using EQD2Viewer.Core.Models;
 
 namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
@@ -34,87 +36,41 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
     ///   Per-structure α/β — controls DVH calculations (editable in structure settings grid)
     ///   Summation α/β     — set at summation dialog; display α/β syncs initially
     /// 
-    /// Lifetime: Disposed when MainWindow closes. Must be disposed before ESAPI
-    /// ScriptContext goes out of scope.
+    /// All data comes from ClinicalSnapshot — zero ESAPI dependencies at runtime.
     /// </summary>
     public partial class MainViewModel : ObservableObject, IDisposable
     {
-        internal readonly ScriptContext _context;
-        internal readonly PlanSetup _plan;
         internal readonly IImageRenderingService _renderingService;
         internal readonly IDebugExportService _debugExportService;
-        internal readonly IDVHService _dvhService;
+        internal readonly IDVHCalculation _dvhService;
 
         // ── Clean Architecture data source ──
         internal readonly ClinicalSnapshot _snapshot;
-        internal readonly bool _isSnapshotMode;
+
+        /// <summary>
+        /// Optional summation data loader — null when summation is not available
+        /// (e.g. in DevRunner without full ESAPI data access).
+        /// </summary>
+        internal readonly ISummationDataLoader _summationDataLoader;
 
         private int _renderPendingFlag = 0;
         private bool _disposed;
         private volatile bool _isRendering;
 
         internal readonly List<DVHCacheEntry> _dvhCache = new List<DVHCacheEntry>();
-        internal readonly List<Structure> _visibleStructures = new List<Structure>();
+        internal readonly List<string> _visibleStructureIds = new List<string>();
 
-        public MainViewModel(ScriptContext context, IImageRenderingService renderingService,
-            IDebugExportService debugExportService, IDVHService dvhService)
-        {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
-            _plan = context.ExternalPlanSetup;
-            _renderingService = renderingService ?? throw new ArgumentNullException(nameof(renderingService));
-            _debugExportService = debugExportService ?? throw new ArgumentNullException(nameof(debugExportService));
-            _dvhService = dvhService ?? throw new ArgumentNullException(nameof(dvhService));
-
-            _contourLines = new ObservableCollection<IsodoseContourData>();
-            _structureContourLines = new ObservableCollection<StructureContourData>();
-
-            var defaults = IsodoseLevel.GetEclipseDefaults();
-            IsodoseLevels = new ObservableCollection<IsodoseLevel>(defaults);
-            _isodoseLevelArray = defaults;
-            WireIsodoseLevelEvents();
-
-            int width = _context.Image.XSize;
-            int height = _context.Image.YSize;
-            _maxSlice = _context.Image.ZSize - 1;
-            _currentSlice = _maxSlice / 2;
-
-            if (_plan != null)
-                _numberOfFractions = _plan.NumberOfFractions ?? 1;
-
-            _renderingService.Initialize(width, height);
-            StatusText = "Initializing...";
-
-            double prescriptionGy = GetPrescriptionGy();
-            _renderingService.PreloadData(_context.Image, _plan?.Dose, prescriptionGy);
-
-            CtImageSource = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
-            DoseImageSource = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
-            OverlayImageSource = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
-
-            InitializePlotModel();
-            AutoPreset();
-        }
-
-        /// <summary>
-        /// Clean Architecture constructor — no ESAPI, no ScriptContext.
-        /// Used by DevRunner and future test infrastructure.
-        /// All data comes from the pre-loaded ClinicalSnapshot.
-        /// </summary>
         public MainViewModel(ClinicalSnapshot snapshot,
             IImageRenderingService renderingService,
             IDebugExportService debugExportService,
-            IDVHService dvhService)
+            IDVHCalculation dvhService,
+            ISummationDataLoader summationDataLoader = null)
         {
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
-            _isSnapshotMode = true;
-
-            // These remain null in snapshot mode — code checks _isSnapshotMode
-            _context = null;
-            _plan = null;
-
             _renderingService = renderingService ?? throw new ArgumentNullException(nameof(renderingService));
             _debugExportService = debugExportService ?? throw new ArgumentNullException(nameof(debugExportService));
             _dvhService = dvhService ?? throw new ArgumentNullException(nameof(dvhService));
+            _summationDataLoader = summationDataLoader;
 
             _contourLines = new ObservableCollection<IsodoseContourData>();
             _structureContourLines = new ObservableCollection<StructureContourData>();
@@ -130,9 +86,6 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             _currentSlice = _maxSlice / 2;
 
             _numberOfFractions = snapshot.ActivePlan?.NumberOfFractions ?? 1;
-
-            // Note: Initialize + PreloadData already called by DevRunner App.xaml.cs
-            // before passing the service to this constructor
 
             CtImageSource = new WriteableBitmap(width, height, 96, 96,
                 PixelFormats.Bgra32, null);
@@ -182,13 +135,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
         internal double GetPrescriptionGy()
         {
-            if (_isSnapshotMode)
-                return _snapshot?.ActivePlan?.TotalDoseGy ?? 0;
-
-            if (_plan == null) return 0;
-            return _plan.TotalDose.Unit == DoseValue.DoseUnit.cGy
-                ? _plan.TotalDose.Dose / 100.0
-                : _plan.TotalDose.Dose;
+            return _snapshot?.ActivePlan?.TotalDoseGy ?? 0;
         }
 
         private void InitializePlotModel()
@@ -251,11 +198,14 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             _summationService?.Dispose();
         }
 
+        /// <summary>
+        /// DVH cache entry using Clean Architecture DTOs.
+        /// </summary>
         internal class DVHCacheEntry
         {
-            public PlanSetup Plan { get; set; }
-            public Structure Structure { get; set; }
-            public DVHData DVHData { get; set; }
+            public string PlanId { get; set; }
+            public StructureData Structure { get; set; }
+            public DvhCurveData DvhCurve { get; set; }
         }
     }
 
@@ -265,27 +215,23 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
     /// </summary>
     public class StructureAlphaBetaItem : INotifyPropertyChanged
     {
-        public Structure Structure { get; }
+        public StructureData Structure { get; }
         private double _alphaBeta;
         public string Id => Structure.Id;
         public string DicomType => Structure.DicomType;
 
-        /// <summary>
-        /// Tissue-specific α/β ratio [Gy].
-        /// Used for both single-plan and summation DVH EQD2 calculations.
-        /// </summary>
         public double AlphaBeta
         {
             get => _alphaBeta;
             set
             {
-                if (value <= 0) value = 0.5; // Prevent clinically invalid values
+                if (value <= 0) value = 0.5;
                 _alphaBeta = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AlphaBeta)));
             }
         }
 
-        public StructureAlphaBetaItem(Structure structure, double alphaBeta)
+        public StructureAlphaBetaItem(StructureData structure, double alphaBeta)
         {
             Structure = structure;
             _alphaBeta = alphaBeta;
