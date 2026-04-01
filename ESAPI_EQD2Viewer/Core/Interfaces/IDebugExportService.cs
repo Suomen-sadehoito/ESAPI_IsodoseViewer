@@ -1,9 +1,9 @@
-using VMS.TPS.Common.Model.API;
+using EQD2Viewer.Core.Data;
 
 namespace ESAPI_EQD2Viewer.Core.Interfaces
 {
     public interface IDebugExportService
     {
-        void ExportDebugLog(ScriptContext context, PlanSetup plan, int currentSlice);
+        void ExportDebugLog(ClinicalSnapshot snapshot, int currentSlice);
     }
 }

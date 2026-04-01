@@ -1,63 +1,55 @@
 using System;
 using System.Linq;
-using VMS.TPS.Common.Model.API;
-using VMS.TPS.Common.Model.Types;
 using EQD2Viewer.Core.Data;
 using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Calculations;
-using EQD2Viewer.Core.Logging;
 using EQD2Viewer.Core.Models;
-using ESAPI_EQD2Viewer.Core.Interfaces;
 using ESAPI_EQD2Viewer.Core.Models;
 
 namespace ESAPI_EQD2Viewer.Services
 {
-    public class DVHService : IDVHService
+    public class DVHService : IDVHCalculation
     {
-        public DVHData GetDVH(PlanSetup plan, Structure structure)
-        {
-            return plan.GetDVHCumulativeData(structure,
-                DoseValuePresentation.Absolute, VolumePresentation.Relative,
-                DomainConstants.DvhSamplingResolution);
-        }
-
-        public DVHSummary BuildPhysicalSummary(PlanSetup plan, Structure structure, DVHData dvhData)
+        public DVHSummary BuildPhysicalSummaryFromCurve(DvhCurveData dvh, string planId)
         {
             return new DVHSummary
             {
-                StructureId = structure.Id, PlanId = plan.Id, Type = "Physical",
-                DMax = ConvertToGy(dvhData.MaxDose), DMean = ConvertToGy(dvhData.MeanDose),
-                DMin = ConvertToGy(dvhData.MinDose), Volume = dvhData.Volume
+                StructureId = dvh.StructureId,
+                PlanId = planId,
+                Type = "Physical",
+                DMax = dvh.DMaxGy,
+                DMean = dvh.DMeanGy,
+                DMin = dvh.DMinGy,
+                Volume = dvh.VolumeCc
             };
         }
 
-        public DVHSummary BuildEQD2Summary(PlanSetup plan, Structure structure, DVHData dvhData,
+        public DVHSummary BuildEQD2SummaryFromCurve(DvhCurveData dvh, string planId,
             int numberOfFractions, double alphaBeta, EQD2MeanMethod meanMethod)
         {
-            double physDmax = ConvertToGy(dvhData.MaxDose);
-            double physDmin = ConvertToGy(dvhData.MinDose);
-            double physDmean = ConvertToGy(dvhData.MeanDose);
-
-            double eqd2Dmax = EQD2Calculator.ToEQD2(physDmax, numberOfFractions, alphaBeta);
-            double eqd2Dmin = EQD2Calculator.ToEQD2(physDmin, numberOfFractions, alphaBeta);
+            double eqd2Dmax = EQD2Calculator.ToEQD2(dvh.DMaxGy, numberOfFractions, alphaBeta);
+            double eqd2Dmin = EQD2Calculator.ToEQD2(dvh.DMinGy, numberOfFractions, alphaBeta);
             double eqd2Dmean;
 
-            if (meanMethod == EQD2MeanMethod.Differential)
+            if (meanMethod == EQD2MeanMethod.Differential && dvh.Curve != null)
             {
-                var curveInGy = dvhData.CurveData.Select(p => new DoseVolumePoint(
-                    ConvertToGy(p.DoseValue),
-                    p.Volume)).ToArray();
-                eqd2Dmean = EQD2Calculator.CalculateMeanEQD2FromDVH(curveInGy, numberOfFractions, alphaBeta);
+                var curvePoints = dvh.Curve.Select(p => new DoseVolumePoint(p[0], p[1])).ToArray();
+                eqd2Dmean = EQD2Calculator.CalculateMeanEQD2FromDVH(curvePoints, numberOfFractions, alphaBeta);
             }
             else
             {
-                eqd2Dmean = EQD2Calculator.ToEQD2(physDmean, numberOfFractions, alphaBeta);
+                eqd2Dmean = EQD2Calculator.ToEQD2(dvh.DMeanGy, numberOfFractions, alphaBeta);
             }
 
             return new DVHSummary
             {
-                StructureId = structure.Id, PlanId = plan.Id, Type = "EQD2",
-                DMax = eqd2Dmax, DMean = eqd2Dmean, DMin = eqd2Dmin, Volume = dvhData.Volume
+                StructureId = dvh.StructureId,
+                PlanId = planId,
+                Type = "EQD2",
+                DMax = eqd2Dmax,
+                DMean = eqd2Dmean,
+                DMin = eqd2Dmin,
+                Volume = dvh.VolumeCc
             };
         }
 
@@ -131,8 +123,5 @@ namespace ESAPI_EQD2Viewer.Services
                 DMin = dMin, Volume = totalVolumeCc
             };
         }
-
-        private static double ConvertToGy(DoseValue dv) =>
-            dv.Unit == DoseValue.DoseUnit.cGy ? dv.Dose / 100.0 : dv.Dose;
     }
 }
