@@ -4,13 +4,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using VMS.TPS.Common.Model.API;
-using VMS.TPS.Common.Model.Types;
 using EQD2Viewer.Core.Data;
 using EQD2Viewer.Core.Models;
 using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Calculations;
 using EQD2Viewer.Core.Logging;
+using ESAPI_EQD2Viewer.Core.Data;
 using ESAPI_EQD2Viewer.Core.Interfaces;
 using ESAPI_EQD2Viewer.Core.Models;
 using ESAPI_EQD2Viewer.Core.Calculations;
@@ -22,7 +21,9 @@ namespace ESAPI_EQD2Viewer.Services
     /// Two-phase dose summation with per-plan physical dose retention.
     /// 
     /// Phase 1 — PrepareData() — UI thread:
-    ///   Reads ESAPI data into plain arrays. Rasterizes structure contours.
+    ///   Loads plan data through ISummationDataLoader into plain arrays.
+    ///   Rasterizes structure contours into masks for DVH.
+    ///   Zero ESAPI dependencies — all data access is via ISummationDataLoader.
     /// 
     /// Phase 2 — ComputeAsync() — background:
     ///   Accumulates per-plan physical dose at each voxel.
@@ -64,18 +65,20 @@ namespace ESAPI_EQD2Viewer.Services
         private volatile bool _hasSummedDose;
         private bool _disposed;
 
-        private readonly Patient _patient;
-        private readonly Image _referenceImage;
+        private readonly VolumeData _referenceCtImage;
+        private readonly ISummationDataLoader _dataLoader;
+        private readonly List<RegistrationData> _registrations;
 
         public bool HasSummedDose => _hasSummedDose;
         public double SummedReferenceDoseGy => _summedReferenceDoseGy;
         public double MaxDoseGy => _maxDoseGy;
         public int SliceCount => _refZ;
 
-        public SummationService(Patient patient, Image referenceImage)
+        public SummationService(VolumeData referenceCtImage, ISummationDataLoader dataLoader, List<RegistrationData> registrations)
         {
-            _patient = patient ?? throw new ArgumentNullException(nameof(patient));
-            _referenceImage = referenceImage ?? throw new ArgumentNullException(nameof(referenceImage));
+            _referenceCtImage = referenceCtImage ?? throw new ArgumentNullException(nameof(referenceCtImage));
+            _dataLoader = dataLoader ?? throw new ArgumentNullException(nameof(dataLoader));
+            _registrations = registrations ?? new List<RegistrationData>();
         }
 
         // ====================================================================
@@ -93,32 +96,32 @@ namespace ESAPI_EQD2Viewer.Services
             try
             {
                 _config = config;
-                _refW = _referenceImage.XSize;
-                _refH = _referenceImage.YSize;
-                _refZ = _referenceImage.ZSize;
+                _refW = _referenceCtImage.XSize;
+                _refH = _referenceCtImage.YSize;
+                _refZ = _referenceCtImage.ZSize;
                 _currentDisplayAlphaBeta = config.GlobalAlphaBeta;
 
                 // Voxel volume in cm³ for DVH
-                _voxelVolumeCc = (_referenceImage.XRes * _referenceImage.YRes * _referenceImage.ZRes) / 1000.0;
+                _voxelVolumeCc = (_referenceCtImage.XRes * _referenceCtImage.YRes * _referenceCtImage.ZRes) / 1000.0;
 
                 _refGeo = new CachedRefGeometry
                 {
-                    Ox = _referenceImage.Origin.x,
-                    Oy = _referenceImage.Origin.y,
-                    Oz = _referenceImage.Origin.z,
-                    Xx = _referenceImage.XDirection.x * _referenceImage.XRes,
-                    Xy = _referenceImage.XDirection.y * _referenceImage.XRes,
-                    Xz = _referenceImage.XDirection.z * _referenceImage.XRes,
-                    Yx = _referenceImage.YDirection.x * _referenceImage.YRes,
-                    Yy = _referenceImage.YDirection.y * _referenceImage.YRes,
-                    Yz = _referenceImage.YDirection.z * _referenceImage.YRes,
-                    Zx = _referenceImage.ZDirection.x * _referenceImage.ZRes,
-                    Zy = _referenceImage.ZDirection.y * _referenceImage.ZRes,
-                    Zz = _referenceImage.ZDirection.z * _referenceImage.ZRes,
+                    Ox = _referenceCtImage.Origin.X,
+                    Oy = _referenceCtImage.Origin.Y,
+                    Oz = _referenceCtImage.Origin.Z,
+                    Xx = _referenceCtImage.XDirection.X * _referenceCtImage.XRes,
+                    Xy = _referenceCtImage.XDirection.Y * _referenceCtImage.XRes,
+                    Xz = _referenceCtImage.XDirection.Z * _referenceCtImage.XRes,
+                    Yx = _referenceCtImage.YDirection.X * _referenceCtImage.YRes,
+                    Yy = _referenceCtImage.YDirection.Y * _referenceCtImage.YRes,
+                    Yz = _referenceCtImage.YDirection.Z * _referenceCtImage.YRes,
+                    Zx = _referenceCtImage.ZDirection.X * _referenceCtImage.ZRes,
+                    Zy = _referenceCtImage.ZDirection.Y * _referenceCtImage.ZRes,
+                    Zz = _referenceCtImage.ZDirection.Z * _referenceCtImage.ZRes,
                 };
 
-                _refHuOffset = DetermineHuOffset(_referenceImage);
-                _referenceFOR = _referenceImage.FOR ?? "";
+                _refHuOffset = _referenceCtImage.HuOffset;
+                _referenceFOR = _referenceCtImage.FOR ?? "";
 
                 _cachedPlans = new List<CachedPlanData>();
                 foreach (var entry in config.Plans)
@@ -749,16 +752,15 @@ namespace ESAPI_EQD2Viewer.Services
             var refEntry = _config.Plans.FirstOrDefault(p => p.IsReference);
             if (refEntry == null) return;
 
-            var course = _patient.Courses.FirstOrDefault(c => c.Id == refEntry.CourseId);
-            var plan = course?.PlanSetups.FirstOrDefault(p => p.Id == refEntry.PlanId);
-            if (plan?.StructureSet == null) return;
+            var structures = _dataLoader.LoadStructureContours(refEntry.CourseId, refEntry.PlanId);
+            if (structures == null || structures.Count == 0) return;
 
-            double imgOx = _referenceImage.Origin.x, imgOy = _referenceImage.Origin.y, imgOz = _referenceImage.Origin.z;
-            double xDirX = _referenceImage.XDirection.x, xDirY = _referenceImage.XDirection.y, xDirZ = _referenceImage.XDirection.z;
-            double yDirX = _referenceImage.YDirection.x, yDirY = _referenceImage.YDirection.y, yDirZ = _referenceImage.YDirection.z;
-            double xRes = _referenceImage.XRes, yRes = _referenceImage.YRes;
+            double imgOx = _referenceCtImage.Origin.X, imgOy = _referenceCtImage.Origin.Y, imgOz = _referenceCtImage.Origin.Z;
+            double xDirX = _referenceCtImage.XDirection.X, xDirY = _referenceCtImage.XDirection.Y, xDirZ = _referenceCtImage.XDirection.Z;
+            double yDirX = _referenceCtImage.YDirection.X, yDirY = _referenceCtImage.YDirection.Y, yDirZ = _referenceCtImage.YDirection.Z;
+            double xRes = _referenceCtImage.XRes, yRes = _referenceCtImage.YRes;
 
-            foreach (var structure in plan.StructureSet.Structures)
+            foreach (var structure in structures)
             {
                 if (structure.IsEmpty) continue;
                 try
@@ -768,18 +770,22 @@ namespace ESAPI_EQD2Viewer.Services
 
                     for (int z = 0; z < _refZ; z++)
                     {
-                        var contours = structure.GetContoursOnImagePlane(z);
-                        if (contours == null || contours.Length == 0) { sliceMasks[z] = null; continue; }
+                        if (!structure.ContoursBySlice.TryGetValue(z, out var contourList) ||
+                            contourList == null || contourList.Count == 0)
+                        {
+                            sliceMasks[z] = null;
+                            continue;
+                        }
                         hasAnyContour = true;
                         var masks = new List<bool[]>();
 
-                        foreach (var contour in contours)
+                        foreach (var contour in contourList)
                         {
                             if (contour.Length < 3) continue;
                             var pixelPoints = new Point2D[contour.Length];
                             for (int i = 0; i < contour.Length; i++)
                             {
-                                double dx = contour[i].x - imgOx, dy = contour[i].y - imgOy, dz = contour[i].z - imgOz;
+                                double dx = contour[i][0] - imgOx, dy = contour[i][1] - imgOy, dz = contour[i][2] - imgOz;
                                 pixelPoints[i] = new Point2D(
                                     (dx * xDirX + dy * xDirY + dz * xDirZ) / xRes,
                                     (dx * yDirX + dy * yDirY + dz * yDirZ) / yRes);
@@ -807,37 +813,19 @@ namespace ESAPI_EQD2Viewer.Services
         // ESAPI data caching helpers (unchanged from original)
         // ====================================================================
 
-        private int DetermineHuOffset(Image ctImage)
-        {
-            int midSlice = ctImage.ZSize / 2;
-            var slice = new int[ctImage.XSize, ctImage.YSize];
-            ctImage.GetVoxels(midSlice, slice);
-            return ImageUtils.DetermineHuOffset(slice, ctImage.XSize, ctImage.YSize);
-        }
-
         private CachedPlanData CachePlanData(SummationPlanEntry entry, SummationMethod method,
             double alphaBeta, string referenceFOR)
         {
-            var course = _patient.Courses.FirstOrDefault(c => c.Id == entry.CourseId);
-            if (course == null) { SimpleLogger.Error($"Course not found: {entry.CourseId}"); return null; }
+            var planDoseData = _dataLoader.LoadPlanDose(entry.CourseId, entry.PlanId, entry.TotalDoseGy);
+            if (planDoseData == null)
+            {
+                SimpleLogger.Error($"Could not load plan dose: {entry.CourseId}/{entry.PlanId}");
+                return null;
+            }
 
-            var plan = course.PlanSetups.FirstOrDefault(p => p.Id == entry.PlanId);
-            if (plan?.Dose == null) { SimpleLogger.Error($"Plan or dose not found: {entry.PlanId}"); return null; }
-
-            var dose = plan.Dose;
-            int dx = dose.XSize, dy = dose.YSize, dz = dose.ZSize;
-
-            int[][,] doseVoxels = new int[dz][,];
-            for (int z = 0; z < dz; z++) { doseVoxels[z] = new int[dx, dy]; dose.GetVoxels(z, doseVoxels[z]); }
-
-            DoseValue dv0 = dose.VoxelToDoseValue(0);
-            DoseValue dvRef = dose.VoxelToDoseValue(DomainConstants.DoseCalibrationRawValue);
-            double rawScale = (dvRef.Dose - dv0.Dose) / (double)DomainConstants.DoseCalibrationRawValue;
-            double rawOffset = dv0.Dose;
-            double unitToGy;
-            if (dvRef.Unit == DoseValue.DoseUnit.Percent) unitToGy = entry.TotalDoseGy / 100.0;
-            else if (dvRef.Unit == DoseValue.DoseUnit.cGy) unitToGy = 0.01;
-            else unitToGy = 1.0;
+            var doseGeo = planDoseData.DoseGeometry;
+            var scaling = planDoseData.Scaling;
+            int dx = doseGeo.XSize, dy = doseGeo.YSize, dz = doseGeo.ZSize;
 
             double eqd2Q = 0, eqd2L = 1.0;
             bool useEqd2 = method == SummationMethod.EQD2 && entry.NumberOfFractions > 0 && alphaBeta > 0;
@@ -846,21 +834,21 @@ namespace ESAPI_EQD2Viewer.Services
 
             var dg = new CachedDoseGeometry
             {
-                Ox = dose.Origin.x,
-                Oy = dose.Origin.y,
-                Oz = dose.Origin.z,
-                XDx = dose.XDirection.x,
-                XDy = dose.XDirection.y,
-                XDz = dose.XDirection.z,
-                YDx = dose.YDirection.x,
-                YDy = dose.YDirection.y,
-                YDz = dose.YDirection.z,
-                ZDx = dose.ZDirection.x,
-                ZDy = dose.ZDirection.y,
-                ZDz = dose.ZDirection.z,
-                XRes = dose.XRes,
-                YRes = dose.YRes,
-                ZRes = dose.ZRes,
+                Ox = doseGeo.Origin.X,
+                Oy = doseGeo.Origin.Y,
+                Oz = doseGeo.Origin.Z,
+                XDx = doseGeo.XDirection.X,
+                XDy = doseGeo.XDirection.Y,
+                XDz = doseGeo.XDirection.Z,
+                YDx = doseGeo.YDirection.X,
+                YDy = doseGeo.YDirection.Y,
+                YDz = doseGeo.YDirection.Z,
+                ZDx = doseGeo.ZDirection.X,
+                ZDy = doseGeo.ZDirection.Y,
+                ZDz = doseGeo.ZDirection.Z,
+                XRes = doseGeo.XRes,
+                YRes = doseGeo.YRes,
+                ZRes = doseGeo.ZRes,
                 XSize = dx,
                 YSize = dy,
                 ZSize = dz
@@ -870,15 +858,13 @@ namespace ESAPI_EQD2Viewer.Services
             double[,] regMatrix = null;
             if (!entry.IsReference && !string.IsNullOrEmpty(entry.RegistrationId))
             {
-                var reg = _patient.Registrations?.FirstOrDefault(r => r.Id == entry.RegistrationId);
+                var reg = _registrations?.FirstOrDefault(r => r.Id == entry.RegistrationId);
                 if (reg != null)
                 {
-                    var forwardMatrix = BuildTransformMatrix(reg);
+                    var forwardMatrix = reg.ToMatrix4x4();
                     if (forwardMatrix != null)
                     {
-                        string planFOR = "";
-                        try { planFOR = plan.StructureSet?.Image?.FOR ?? ""; }
-                        catch (Exception ex) { SimpleLogger.Warning($"Could not get plan FOR: {ex.Message}"); }
+                        string planFOR = _dataLoader.GetPlanImageFOR(entry.CourseId, entry.PlanId);
 
                         bool sourceIsRef = string.Equals(reg.SourceFOR, referenceFOR, StringComparison.OrdinalIgnoreCase);
                         bool registeredIsPlan = string.Equals(reg.RegisteredFOR, planFOR, StringComparison.OrdinalIgnoreCase);
@@ -904,53 +890,42 @@ namespace ESAPI_EQD2Viewer.Services
             CachedCtGeometry ctGeo = null;
             int ctHuOffset = 0;
 
-            if (!entry.IsReference)
+            if (!entry.IsReference && planDoseData.CtImage != null)
             {
-                try
+                var img = planDoseData.CtImage;
+                ctVoxels = img.Voxels;
+                ctHuOffset = img.HuOffset;
+                ctGeo = new CachedCtGeometry
                 {
-                    var img = plan.StructureSet?.Image;
-                    if (img != null)
-                    {
-                        int cx = img.XSize, cy = img.YSize, cz = img.ZSize;
-                        ctVoxels = new int[cz][,];
-                        for (int z = 0; z < cz; z++) { ctVoxels[z] = new int[cx, cy]; img.GetVoxels(z, ctVoxels[z]); }
-
-                        ctGeo = new CachedCtGeometry
-                        {
-                            Ox = img.Origin.x,
-                            Oy = img.Origin.y,
-                            Oz = img.Origin.z,
-                            XDx = img.XDirection.x,
-                            XDy = img.XDirection.y,
-                            XDz = img.XDirection.z,
-                            YDx = img.YDirection.x,
-                            YDy = img.YDirection.y,
-                            YDz = img.YDirection.z,
-                            ZDx = img.ZDirection.x,
-                            ZDy = img.ZDirection.y,
-                            ZDz = img.ZDirection.z,
-                            XRes = img.XRes,
-                            YRes = img.YRes,
-                            ZRes = img.ZRes,
-                            XSize = cx,
-                            YSize = cy,
-                            ZSize = cz
-                        };
-                        int midZ = cz / 2;
-                        ctHuOffset = ImageUtils.DetermineHuOffset(ctVoxels[midZ], cx, cy);
-                    }
-                }
-                catch (Exception ex) { SimpleLogger.Warning($"CT loading failed for {entry.DisplayLabel}: {ex.Message}"); }
+                    Ox = img.Origin.X,
+                    Oy = img.Origin.Y,
+                    Oz = img.Origin.Z,
+                    XDx = img.XDirection.X,
+                    XDy = img.XDirection.Y,
+                    XDz = img.XDirection.Z,
+                    YDx = img.YDirection.X,
+                    YDy = img.YDirection.Y,
+                    YDz = img.YDirection.Z,
+                    ZDx = img.ZDirection.X,
+                    ZDy = img.ZDirection.Y,
+                    ZDz = img.ZDirection.Z,
+                    XRes = img.XRes,
+                    YRes = img.YRes,
+                    ZRes = img.ZRes,
+                    XSize = img.XSize,
+                    YSize = img.YSize,
+                    ZSize = img.ZSize
+                };
             }
 
             return new CachedPlanData
             {
                 Entry = entry,
-                DoseVoxels = doseVoxels,
+                DoseVoxels = planDoseData.DoseVoxels,
                 DoseGeo = dg,
-                RawScale = rawScale,
-                RawOffset = rawOffset,
-                UnitToGy = unitToGy,
+                RawScale = scaling.RawScale,
+                RawOffset = scaling.RawOffset,
+                UnitToGy = scaling.UnitToGy,
                 UseEQD2 = useEqd2,
                 EQD2Q = eqd2Q,
                 EQD2L = eqd2L,
@@ -961,26 +936,6 @@ namespace ESAPI_EQD2Viewer.Services
                 CtGeo = ctGeo,
                 CtHuOffset = ctHuOffset
             };
-        }
-
-        private double[,] BuildTransformMatrix(Registration registration)
-        {
-            try
-            {
-                VVector origin = new VVector(0, 0, 0);
-                VVector tO = registration.TransformPoint(origin);
-                VVector tX = registration.TransformPoint(new VVector(1, 0, 0));
-                VVector tY = registration.TransformPoint(new VVector(0, 1, 0));
-                VVector tZ = registration.TransformPoint(new VVector(0, 0, 1));
-
-                var M = new double[4, 4];
-                M[0, 0] = tX.x - tO.x; M[0, 1] = tY.x - tO.x; M[0, 2] = tZ.x - tO.x; M[0, 3] = tO.x;
-                M[1, 0] = tX.y - tO.y; M[1, 1] = tY.y - tO.y; M[1, 2] = tZ.y - tO.y; M[1, 3] = tO.y;
-                M[2, 0] = tX.z - tO.z; M[2, 1] = tY.z - tO.z; M[2, 2] = tZ.z - tO.z; M[2, 3] = tO.z;
-                M[3, 0] = 0; M[3, 1] = 0; M[3, 2] = 0; M[3, 3] = 1;
-                return M;
-            }
-            catch (Exception ex) { SimpleLogger.Error($"BuildTransformMatrix failed for {registration.Id}", ex); return null; }
         }
 
         public void Dispose()

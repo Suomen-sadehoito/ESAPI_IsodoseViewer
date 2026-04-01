@@ -31,7 +31,15 @@
 		<ProjectReference Include="..\ESAPI_EQD2Viewer\ESAPI_EQD2Viewer.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
+	<PropertyGroup>
+		<RealEsapiLibPath>$(MSBuildThisFileDirectory)..\lib\</RealEsapiLibPath>
+		<HasRealEsapi>false</HasRealEsapi>
+		<HasRealEsapi Condition="Exists('$(RealEsapiLibPath)VMS.TPS.Common.Model.API.dll')">true</HasRealEsapi>
+		<HasRealEsapi Condition="'$(CI)' == 'true'">false</HasRealEsapi>
+	</PropertyGroup>
+
+	<!-- Local: embed real ESAPI DLLs for standalone execution -->
+	<ItemGroup Condition="'$(HasRealEsapi)' == 'true'">
 		<Reference Include="VMS.TPS.Common.Model.API">
 			<HintPath>..\lib\VMS.TPS.Common.Model.API.dll</HintPath>
 			<Private>True</Private>
@@ -40,6 +48,10 @@
 			<HintPath>..\lib\VMS.TPS.Common.Model.Types.dll</HintPath>
 			<Private>True</Private>
 		</Reference>
+	</ItemGroup>
+	<!-- CI: use Stubs for compilation -->
+	<ItemGroup Condition="'$(HasRealEsapi)' == 'false'">
+		<ProjectReference Include="..\ESAPI_EQD2Viewer.Stubs\ESAPI_EQD2Viewer.Stubs.csproj" />
 	</ItemGroup>
 
 </Project>

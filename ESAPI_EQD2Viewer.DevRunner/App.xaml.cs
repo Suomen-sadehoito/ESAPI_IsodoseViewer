@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows;
 using ESAPI_EQD2Viewer.Core.Data;
 using ESAPI_EQD2Viewer.Core.Interfaces;
+using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Logging;
 using ESAPI_EQD2Viewer.Services;
 using ESAPI_EQD2Viewer.UI.ViewModels;
@@ -57,7 +58,7 @@ namespace ESAPI_EQD2Viewer.DevRunner
                 // ── 3. Create services (same as production) ──
                 IImageRenderingService renderingService = new ImageRenderingService();
                 IDebugExportService debugService = new DebugExportService();
-                IDVHService dvhService = new DVHService();
+                IDVHCalculation dvhService = new DVHService();
 
                 // ── 4. Initialize rendering from snapshot ──
                 int width = snapshot.CtImage.XSize;

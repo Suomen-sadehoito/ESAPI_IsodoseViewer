@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using VMS.TPS.Common.Model.API;
 using ESAPI_EQD2Viewer.Core.Interfaces;
+using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Logging;
 using ESAPI_EQD2Viewer.Services;
 using ESAPI_EQD2Viewer.UI.ViewModels;
@@ -36,7 +37,10 @@ namespace VMS.TPS
 
                 IImageRenderingService renderingService = new ImageRenderingService();
                 IDebugExportService debugService = new DebugExportService();
-                IDVHService dvhService = new DVHService();
+                IDVHCalculation dvhService = new DVHService();
+
+                // Summation data loader for on-demand plan loading
+                ISummationDataLoader summationLoader = new ESAPI_EQD2Viewer.Adapters.EsapiSummationDataLoader(context.Patient);
 
                 int width = snapshot.CtImage.XSize;
                 int height = snapshot.CtImage.YSize;
@@ -44,8 +48,8 @@ namespace VMS.TPS
                 renderingService.Initialize(width, height);
                 renderingService.PreloadData(snapshot.CtImage, snapshot.Dose);
 
-                // Use the new snapshot-based constructor
-                var viewModel = new MainViewModel(snapshot, renderingService, debugService, dvhService);
+                // Use the new snapshot-based constructor with summation support
+                var viewModel = new MainViewModel(snapshot, renderingService, debugService, dvhService, summationLoader);
 
                 // Use the snapshot-based constructor for MainWindow
                 var window = new MainWindow(viewModel);

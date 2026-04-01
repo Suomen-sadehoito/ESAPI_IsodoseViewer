@@ -14,18 +14,19 @@ namespace ESAPI_EQD2Viewer.Core.Interfaces
     /// Two-phase dose summation service for multi-plan re-irradiation assessment.
     /// 
     /// Architecture:
-    ///   Phase 1 (UI thread):  Load ESAPI data into plain arrays.
+    ///   Phase 1 (UI thread):  Load plan data through ISummationDataLoader into plain arrays.
     ///   Phase 2 (any thread): Accumulate per-plan physical dose + compute EQD2 display sum.
     /// 
     /// After Phase 2 completes, the service retains per-plan physical dose arrays,
     /// enabling:
-    ///   - Fast EQD2 recomputation with a different display α/β (no ESAPI calls).
+    ///   - Fast EQD2 recomputation with a different display α/β (no data reloading).
     ///   - Per-structure DVH calculation with structure-specific α/β values.
     /// </summary>
     public interface ISummationService : IDisposable
     {
         /// <summary>
-        /// Phase 1: Load ESAPI data into plain arrays. MUST run on UI thread.
+        /// Phase 1: Load plan data into plain arrays via ISummationDataLoader.
+        /// MUST run on UI thread when using ESAPI data loader.
         /// </summary>
         SummationResult PrepareData(SummationConfig config);
 

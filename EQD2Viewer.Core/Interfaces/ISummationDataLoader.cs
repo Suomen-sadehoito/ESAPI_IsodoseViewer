@@ -48,5 +48,10 @@ namespace EQD2Viewer.Core.Interfaces
         public int[][,] DoseVoxels { get; set; }
         public VolumeGeometry DoseGeometry { get; set; }
         public DoseScaling Scaling { get; set; }
+
+        /// <summary>
+        /// Optional CT image for overlay (only populated for non-reference plans).
+        /// </summary>
+        public VolumeData CtImage { get; set; }
     }
 }
