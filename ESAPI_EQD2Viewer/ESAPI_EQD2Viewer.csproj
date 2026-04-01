@@ -9,7 +9,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ESAPI_EQD2Viewer</RootNamespace>
-    <AssemblyName>ESAPI_EQD2Viewer</AssemblyName>
+    <AssemblyName>ESAPI_EQD2Viewer.esapi</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
