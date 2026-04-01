@@ -5,24 +5,25 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
-using VMS.TPS.Common.Model.API;
-using VMS.TPS.Common.Model.Types;
+using ESAPI_EQD2Viewer.Core.Data;
 using ESAPI_EQD2Viewer.Core.Models;
 
 namespace ESAPI_EQD2Viewer.UI.Views
 {
     public partial class PlanSummationDialog : Window
     {
-        private readonly Patient _patient;
-        private readonly PlanSetup _currentPlan;
+        private readonly List<CourseData> _courses;
+        private readonly List<RegistrationData> _registrations;
+        private readonly PlanData _currentPlan;
         private List<RegistrationInfo> _allRegistrations;
         public ObservableCollection<PlanRowItem> PlanRows { get; } = new ObservableCollection<PlanRowItem>();
         public SummationConfig ResultConfig { get; private set; }
 
-        public PlanSummationDialog(Patient patient, PlanSetup currentPlan)
+        public PlanSummationDialog(List<CourseData> courses, List<RegistrationData> registrations, PlanData currentPlan)
         {
             InitializeComponent();
-            _patient = patient ?? throw new ArgumentNullException(nameof(patient));
+            _courses = courses ?? new List<CourseData>();
+            _registrations = registrations ?? new List<RegistrationData>();
             _currentPlan = currentPlan;
             _allRegistrations = IndexAllRegistrations();
             PopulatePlans();
@@ -32,8 +33,7 @@ namespace ESAPI_EQD2Viewer.UI.Views
         private List<RegistrationInfo> IndexAllRegistrations()
         {
             var list = new List<RegistrationInfo>();
-            if (_patient.Registrations == null) return list;
-            foreach (var reg in _patient.Registrations)
+            foreach (var reg in _registrations)
             {
                 try
                 {
@@ -123,26 +123,23 @@ namespace ESAPI_EQD2Viewer.UI.Views
 
         private void PopulatePlans()
         {
-            if (_patient.Courses == null) return;
-            foreach (var course in _patient.Courses)
+            foreach (var course in _courses)
             {
-                if (course.PlanSetups == null) continue;
-                foreach (var plan in course.PlanSetups)
+                if (course.Plans == null) continue;
+                foreach (var plan in course.Plans)
                 {
-                    if (plan.Dose == null) continue;
-                    double totalGy = plan.TotalDose.Unit == DoseValue.DoseUnit.cGy
-                        ? plan.TotalDose.Dose / 100.0 : plan.TotalDose.Dose;
+                    if (!plan.HasDose) continue;
 
-                    bool isCurrentPlan = _currentPlan != null && plan.Id == _currentPlan.Id && course.Id == _currentPlan.Course?.Id;
-
-                    string imageId = "", imageFOR = "";
-                    try { var img = plan.StructureSet?.Image; if (img != null) { imageId = img.Id ?? ""; imageFOR = img.FOR ?? ""; } } catch { }
+                    bool isCurrentPlan = _currentPlan != null
+                        && plan.PlanId == _currentPlan.Id
+                        && plan.CourseId == _currentPlan.CourseId;
 
                     var row = new PlanRowItem
                     {
-                        CourseId = course.Id, PlanId = plan.Id, ImageId = imageId, ImageFOR = imageFOR,
-                        TotalDoseGy = totalGy, NumberOfFractions = plan.NumberOfFractions ?? 1,
-                        PlanNormalization = plan.PlanNormalizationValue,
+                        CourseId = course.Id, PlanId = plan.PlanId,
+                        ImageId = plan.ImageId ?? "", ImageFOR = plan.ImageFOR ?? "",
+                        TotalDoseGy = plan.TotalDoseGy, NumberOfFractions = plan.NumberOfFractions,
+                        PlanNormalization = plan.PlanNormalization,
                         IsIncluded = isCurrentPlan, IsReference = isCurrentPlan,
                         SelectedRegistrationId = "", Weight = 1.0,
                         RelevantRegistrations = new List<RegistrationOption>()

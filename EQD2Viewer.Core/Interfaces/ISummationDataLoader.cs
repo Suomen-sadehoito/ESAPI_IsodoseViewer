@@ -45,7 +45,7 @@ namespace EQD2Viewer.Core.Interfaces
     /// </summary>
     public class SummationPlanDoseData
     {
-        public int[,][] DoseVoxels { get; set; }
+        public int[][,] DoseVoxels { get; set; }
         public VolumeGeometry DoseGeometry { get; set; }
         public DoseScaling Scaling { get; set; }
     }
