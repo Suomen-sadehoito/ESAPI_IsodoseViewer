@@ -1,7 +1,6 @@
 using EQD2Viewer.Core.Calculations;
 using EQD2Viewer.Core.Data;
 using EQD2Viewer.Core.Models;
-using EQD2Viewer.Core.Models;
 using ESAPI_EQD2Viewer.Services;
 using OxyPlot;
 using OxyPlot.Series;

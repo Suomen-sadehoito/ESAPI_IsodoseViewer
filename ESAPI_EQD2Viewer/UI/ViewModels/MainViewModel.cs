@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using EQD2Viewer.Core.Calculations;
 using EQD2Viewer.Core.Data;
 using EQD2Viewer.Core.Interfaces;
+using EQD2Viewer.Core.Logging;
 using EQD2Viewer.Core.Models;
 using OxyPlot;
 using OxyPlot.Axes;
@@ -12,11 +14,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using EQD2Viewer.Core.Calculations;
-using EQD2Viewer.Core.Data;
-using EQD2Viewer.Core.Interfaces;
-using EQD2Viewer.Core.Logging;
-using EQD2Viewer.Core.Models;
 
 namespace ESAPI_EQD2Viewer.UI.ViewModels
 {

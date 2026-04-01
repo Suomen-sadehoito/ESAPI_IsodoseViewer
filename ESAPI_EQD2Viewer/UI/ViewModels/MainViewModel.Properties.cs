@@ -1,6 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using EQD2Viewer.Core.Models;
-using EQD2Viewer.Core.Models;
 using OxyPlot;
 using System.Collections.ObjectModel;
 using System.Windows.Media.Imaging;

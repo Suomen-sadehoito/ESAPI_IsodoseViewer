@@ -69,8 +69,7 @@
     <Compile Include="Core\Interfaces\IDebugExportService.cs" />
     <Compile Include="Core\Interfaces\IImageRenderingService.cs" />
     <Compile Include="Core\Interfaces\ISummationService.cs" />
-    <Compile Include="Core\Models\EQD2MeanMethod.cs" />
-    <Compile Include="Core\Models\IsodoseContourData.cs" />
+        <Compile Include="Core\Models\IsodoseContourData.cs" />
     <Compile Include="Core\Models\IsodoseLevel.cs" />
     <Compile Include="Core\Models\RenderConstants.cs" />
     <Compile Include="Core\Models\RenderResult.cs" />
@@ -98,8 +97,7 @@
     <Compile Include="UI\Views\PlanSummationDialog.xaml.cs">
       <DependentUpon>PlanSummationDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
+      </ItemGroup>
   <ItemGroup>
     <Page Include="UI\Styles\SharedStyles.xaml">
       <SubType>Designer</SubType>

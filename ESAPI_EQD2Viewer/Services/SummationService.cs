@@ -4,16 +4,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using EQD2Viewer.Core.Data;
-using EQD2Viewer.Core.Models;
-using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Logging;
-using EQD2Viewer.Core.Data;
-using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Models;
-using EQD2Viewer.Core.Calculations;
-
 
 namespace ESAPI_EQD2Viewer.Services
 {

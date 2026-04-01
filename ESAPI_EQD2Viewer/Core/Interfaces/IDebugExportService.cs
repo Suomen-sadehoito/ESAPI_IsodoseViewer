@@ -1,9 +1,2 @@
-using EQD2Viewer.Core.Data;
-
-namespace EQD2Viewer.Core.Interfaces
-{
-    public interface IDebugExportService
-    {
-        void ExportDebugLog(ClinicalSnapshot snapshot, int currentSlice);
-    }
-}
+// This file is intentionally empty.
+// IDebugExportService has moved to EQD2Viewer.Core.Interfaces (EQD2Viewer.Core project).

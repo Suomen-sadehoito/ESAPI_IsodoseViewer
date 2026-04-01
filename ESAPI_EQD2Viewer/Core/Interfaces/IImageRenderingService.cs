@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Windows.Media.Imaging;
 using EQD2Viewer.Core.Data;
 using EQD2Viewer.Core.Models;
-using EQD2Viewer.Core.Models;
 
 namespace EQD2Viewer.Core.Interfaces
 {
