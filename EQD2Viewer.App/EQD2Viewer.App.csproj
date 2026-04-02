@@ -6,7 +6,7 @@
     <RootNamespace>EQD2Viewer.App</RootNamespace>
     <AssemblyName>EQD2Viewer.App</AssemblyName>
     <UseWPF>true</UseWPF>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
  <LangVersion>latest</LangVersion>
     <Platforms>x64</Platforms>
