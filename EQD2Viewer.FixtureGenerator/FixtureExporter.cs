@@ -87,7 +87,7 @@ namespace EQD2Viewer.FixtureGenerator
                     ExportDVH(plan, structure, outputDir);
                     sb.AppendLine($"✓ dvh_{SanitizeName(structure.Id)}.json");
                 }
-                sb.AppendLine($"  → {structures.Count} rakennetta yhteensä");
+                sb.AppendLine($"  {structures.Count} structures total");
             }
 
             // == 8. Reference dose points ==
@@ -97,9 +97,9 @@ namespace EQD2Viewer.FixtureGenerator
             // == 9. All registrations ==
             int regCount = ExportRegistrations(context.Patient, image, outputDir);
             if (regCount > 0)
-                sb.AppendLine($"✓ registrations.json ({regCount} kpl)");
+                sb.AppendLine($"✓ registrations.json ({regCount} registrations)");
             else
-                sb.AppendLine("  (ei rekisteröintejä)");
+                sb.AppendLine("  (no registrations)");
 
             return sb.ToString();
         }
