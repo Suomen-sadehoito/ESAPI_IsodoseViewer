@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -14,10 +14,10 @@ namespace EQD2Viewer.DevRunner
     /// Loads clinical data from JSON fixtures instead of live ESAPI.
     /// 
     /// Supports two fixture formats:
-    ///   1. Snapshot format (snapshot_meta.json) — full ClinicalSnapshot from SnapshotSerializer
-    ///   2. Test fixture format (metadata.json) — selective data from FixtureExporter
+    ///   1. Snapshot format (snapshot_meta.json) â€” full ClinicalSnapshot from SnapshotSerializer
+    ///   2. Test fixture format (metadata.json) â€” selective data from FixtureExporter
     /// 
-    /// Uses AppLauncher for all service/ViewModel/Window wiring —
+    /// Uses AppLauncher for all service/ViewModel/Window wiring â€”
     /// this class only handles fixture discovery and snapshot loading.
     /// </summary>
     public partial class App : Application
@@ -30,8 +30,8 @@ namespace EQD2Viewer.DevRunner
         SimpleLogger.EnableFileLogging("EQD2Viewer_Dev.log");
      SimpleLogger.Info("=== DevRunner starting ===");
 
-  // — 1. Find fixture directory —
-      string fixturePath = ResolveFixturePath(e.Args);
+  // â€” 1. Find fixture directory â€”
+      string? fixturePath = ResolveFixturePath(e.Args);
                 if (fixturePath == null)
   {
  MessageBox.Show(
@@ -40,7 +40,7 @@ namespace EQD2Viewer.DevRunner
       "  EQD2Viewer.DevRunner.exe <fixture_path>\n\n" +
            "Or place fixtures in TestFixtures/ next to the exe.\n\n" +
               "Generate fixtures by running FixtureGenerator in Eclipse.",
-            "EQD2 Viewer — DevRunner",
+            "EQD2 Viewer â€” DevRunner",
        MessageBoxButton.OK, MessageBoxImage.Information);
 
    Shutdown(1);
@@ -49,7 +49,7 @@ namespace EQD2Viewer.DevRunner
 
     SimpleLogger.Info($"Using fixtures: {fixturePath}");
 
-   // — 2. Load clinical data — auto-detect format —
+   // â€” 2. Load clinical data â€” auto-detect format â€”
      IClinicalDataSource dataSource;
                 if (EQD2Viewer.Fixtures.JsonDataSource.IsSnapshotDirectory(fixturePath))
                 {
@@ -68,11 +68,10 @@ namespace EQD2Viewer.DevRunner
             $"{snapshot.ActivePlan.CourseId}/{snapshot.ActivePlan.Id} | " +
           $"{snapshot.ActivePlan.TotalDoseGy:F1} Gy / {snapshot.ActivePlan.NumberOfFractions} fx");
 
-   // — 3. Launch via the shared composition root —
+   // â€” 3. Launch via the shared composition root â€”
          EQD2Viewer.App.AppLauncher.Launch(
           snapshot,
-    summationLoader: null,
-         windowTitle: "[DEV MODE — Fixture Data]",
+         windowTitle: "[DEV MODE â€” Fixture Data]",
         useShowDialog: false);
 
      SimpleLogger.Info("DevRunner UI launched successfully");
@@ -82,7 +81,7 @@ namespace EQD2Viewer.DevRunner
      SimpleLogger.Error("DevRunner startup failed", ex);
      MessageBox.Show(
   $"Startup error:\n\n{ex.Message}\n\n{ex.StackTrace}",
-      "EQD2 Viewer — DevRunner Error",
+      "EQD2 Viewer â€” DevRunner Error",
        MessageBoxButton.OK, MessageBoxImage.Error);
    Shutdown(1);
        }
