@@ -5,8 +5,6 @@ using EQD2Viewer.Core.Models;
 using ESAPI_EQD2Viewer.Services;
 using EQD2Viewer.Fixtures;
 using EQD2Viewer.Fixtures.Models;
-using EQD2Viewer.Core.Models;
-using EQD2Viewer.Core.Calculations;
 using System;
 using System.Linq;
 

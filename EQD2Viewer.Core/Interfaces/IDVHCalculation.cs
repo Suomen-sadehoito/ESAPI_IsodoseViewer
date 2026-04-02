@@ -1,5 +1,4 @@
 using EQD2Viewer.Core.Models;
-using EQD2Viewer.Core.Models;
 
 namespace EQD2Viewer.Core.Interfaces
 {
