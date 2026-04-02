@@ -41,7 +41,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         internal readonly IDebugExportService _debugExportService;
         internal readonly IDVHCalculation _dvhService;
 
-        // â”€â”€ Clean Architecture data source â”€â”€
+        // ── Clean Architecture data source ──
         internal readonly ClinicalSnapshot _snapshot;
 
         /// <summary>
@@ -49,6 +49,10 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         /// (e.g. in DevRunner without full ESAPI data access).
         /// </summary>
         internal readonly ISummationDataLoader _summationDataLoader;
+
+        // ── Child ViewModels (decomposed responsibilities) ──
+        internal readonly ViewModelEventBus _eventBus = new ViewModelEventBus();
+        internal readonly DoseOverlayViewModel _doseOverlay;
 
         private int _renderPendingFlag = 0;
         private bool _disposed;
@@ -69,20 +73,33 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             _dvhService = dvhService ?? throw new ArgumentNullException(nameof(dvhService));
             _summationDataLoader = summationDataLoader;
 
+            // ── Initialize child ViewModels ──
+            double prescGy = snapshot.ActivePlan?.TotalDoseGy ?? 0;
+            double norm = snapshot.ActivePlan?.PlanNormalization ?? 100.0;
+            int fx = snapshot.ActivePlan?.NumberOfFractions ?? 1;
+
+            _doseOverlay = new DoseOverlayViewModel(_eventBus, prescGy, norm, fx);
+
+            // ── Wire event bus subscriptions ──
+            _eventBus.RenderRequested += RequestRender;
+            _eventBus.EQD2EnabledChanged += _ => { if (_dvhCache.Count > 0) RecalculateAllDVH(); };
+            _eventBus.FractionsChanged += _ => { if (_dvhCache.Count > 0) RecalculateAllDVH(); };
+            _eventBus.DisplayAlphaBetaChanged += _ => RecomputeDisplayEQD2IfActive();
+
+            // ── Forward DoseOverlay property changes so existing XAML bindings still work ──
+            _doseOverlay.PropertyChanged += (s, e) => OnPropertyChanged(e.PropertyName);
+
             _contourLines = new ObservableCollection<IsodoseContourData>();
             _structureContourLines = new ObservableCollection<StructureContourData>();
 
-            var defaults = IsodoseLevel.GetEclipseDefaults();
-            IsodoseLevels = new ObservableCollection<IsodoseLevel>(defaults);
-            _isodoseLevelArray = defaults;
-            WireIsodoseLevelEvents();
+            // ── Legacy property sync (bridge until XAML migrates to DoseOverlay.xxx) ──
+            _isodoseLevelArray = _doseOverlay._isodoseLevelArray;
+            IsodoseLevels = _doseOverlay.IsodoseLevels;
 
             int width = snapshot.CtImage.XSize;
             int height = snapshot.CtImage.YSize;
             _maxSlice = snapshot.CtImage.ZSize - 1;
             _currentSlice = _maxSlice / 2;
-
-            _numberOfFractions = snapshot.ActivePlan?.NumberOfFractions ?? 1;
 
             CtImageSource = new WriteableBitmap(width, height, 96, 96,
                 PixelFormats.Bgra32, null);
@@ -92,7 +109,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 PixelFormats.Bgra32, null);
 
             InitializePlotModel();
-            AutoPreset();
+            _doseOverlay.LoadPreset("Eclipse");
         }
 
         private void WireIsodoseLevelEvents()
@@ -126,8 +143,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
         internal void RebuildIsodoseArray()
         {
-            _isodoseLevelArray = new IsodoseLevel[IsodoseLevels.Count];
-            IsodoseLevels.CopyTo(_isodoseLevelArray, 0);
+            _doseOverlay.RebuildIsodoseArray();
+            _isodoseLevelArray = _doseOverlay._isodoseLevelArray;
         }
 
         internal double GetPrescriptionGy()

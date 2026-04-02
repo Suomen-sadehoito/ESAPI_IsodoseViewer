@@ -22,38 +22,10 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         }
 
         [RelayCommand]
-        internal void LoadIsodosePreset(string preset)
-        {
-            IsodoseLevel[] levels;
-            switch (preset)
-            {
-                case "Eclipse": levels = IsodoseLevel.GetEclipseDefaults(); IsodosePresetName = "Eclipse (10)"; CurrentIsodoseMode = IsodoseMode.Relative; break;
-                case "Minimal": levels = IsodoseLevel.GetMinimalSet(); IsodosePresetName = "Minimal (3)"; CurrentIsodoseMode = IsodoseMode.Relative; break;
-                case "Default": levels = IsodoseLevel.GetDefaults(); IsodosePresetName = "Default (4)"; CurrentIsodoseMode = IsodoseMode.Relative; break;
-                case "ReIrradiation": levels = IsodoseLevel.GetReIrradiationPreset(); IsodosePresetName = "Re-irradiation"; CurrentIsodoseMode = IsodoseMode.Absolute; break;
-                case "Stereotactic": levels = IsodoseLevel.GetStereotacticPreset(); IsodosePresetName = "Stereotactic"; CurrentIsodoseMode = IsodoseMode.Absolute; break;
-                case "Palliative": levels = IsodoseLevel.GetPalliativePreset(); IsodosePresetName = "Palliative"; CurrentIsodoseMode = IsodoseMode.Absolute; break;
-                default: levels = IsodoseLevel.GetDefaults(); IsodosePresetName = "Default (4)"; break;
-            }
-            IsodoseLevels.Clear();
-            foreach (var l in levels) IsodoseLevels.Add(l);
-            RebuildIsodoseArray();
-            UpdateIsodoseLabels();
-            RequestRender();
-        }
+        internal void LoadIsodosePreset(string preset) => _doseOverlay.LoadPreset(preset);
 
         [RelayCommand]
-        private void AddIsodoseLevel()
-        {
-            var newLevel = _isodoseMode == IsodoseMode.Absolute
-                ? new IsodoseLevel(0, 25, "25.0 Gy", 0xFF9900FF)
-                : new IsodoseLevel(0.60, "60%", 0xFF9900FF);
-            newLevel.PropertyChanged += OnIsodoseLevelChanged;
-            IsodoseLevels.Add(newLevel);
-            RebuildIsodoseArray();
-            UpdateIsodoseLabels();
-            RequestRender();
-        }
+        private void AddIsodoseLevel() => _doseOverlay.AddLevel();
 
         [RelayCommand]
         private void SetLevelColor(string param)
@@ -61,30 +33,21 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             if (string.IsNullOrEmpty(param)) return;
             var parts = param.Split(':');
             if (parts.Length == 2 && int.TryParse(parts[0], out int index) &&
-                uint.TryParse(parts[1], out uint color) && index >= 0 && index < IsodoseLevels.Count)
+                uint.TryParse(parts[1], out uint color) && index >= 0 && index < _doseOverlay.IsodoseLevels.Count)
             {
-                IsodoseLevels[index].Color = color;
+                _doseOverlay.IsodoseLevels[index].Color = color;
                 RequestRender();
             }
         }
 
         [RelayCommand]
-        private void RemoveIsodoseLevel(IsodoseLevel level)
-        {
-            if (level != null && IsodoseLevels.Contains(level))
-            {
-                level.PropertyChanged -= OnIsodoseLevelChanged;
-                IsodoseLevels.Remove(level);
-                RebuildIsodoseArray();
-                RequestRender();
-            }
-        }
+        private void RemoveIsodoseLevel(IsodoseLevel level) => _doseOverlay.RemoveLevel(level);
 
         [RelayCommand]
         private void ToggleAllIsodose(string visibleStr)
         {
             bool visible = visibleStr?.ToLower() == "true";
-            foreach (var level in IsodoseLevels) level.IsVisible = visible;
+            _doseOverlay.ToggleAllVisibility(visible);
         }
 
         [RelayCommand]

@@ -83,11 +83,12 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             IsSummationComputing = false;
             SummationProgress = 0;
             SummationInfo = "No summation active";
-            SummationAlphaBetaLabel = "";
+            _doseOverlay.SummationAlphaBetaLabel = "";
             CurrentOverlayMode = OverlayMode.Off;
             OverlayPlanOptions.Clear();
             ClearSummationDVH();
-            if (_isodoseMode == IsodoseMode.Absolute) LoadIsodosePreset("Eclipse");
+            if (_doseOverlay.CurrentIsodoseMode == IsodoseMode.Absolute)
+                _doseOverlay.LoadPreset("Eclipse");
             RequestRender();
         }
 
@@ -127,11 +128,11 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                     SummationInfo = $"{ml} sum: {config.Plans.Count} plans | Max: {result.MaxDoseGy:F2} Gy | Ref: {result.TotalReferenceDoseGy:F2} Gy";
                     StatusText = result.StatusMessage;
 
-                    _displayAlphaBeta = config.GlobalAlphaBeta;
-                    OnPropertyChanged(nameof(DisplayAlphaBeta));
-                    SummationAlphaBetaLabel = $"Summation computed with Î±/Î² = {config.GlobalAlphaBeta:F1} Gy";
+                    _doseOverlay.DisplayAlphaBeta = config.GlobalAlphaBeta;
+                    _doseOverlay.SummationAlphaBetaLabel = $"Summation computed with α/β = {config.GlobalAlphaBeta:F1} Gy";
 
-                    if (_isodoseMode != IsodoseMode.Absolute) LoadIsodosePreset("ReIrradiation");
+                    if (_doseOverlay.CurrentIsodoseMode != IsodoseMode.Absolute)
+                        _doseOverlay.LoadPreset("ReIrradiation");
 
                     OverlayPlanOptions.Clear();
                     foreach (var plan in config.Plans.Where(p => !p.IsReference))
@@ -184,11 +185,11 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             try
             {
                 IsSummationComputing = true;
-                SummationInfo = $"Updating display Î±/Î² = {_displayAlphaBeta:F1} Gy...";
+                SummationInfo = $"Updating display α/β = {_doseOverlay.DisplayAlphaBeta:F1} Gy...";
 
                 var progress = new Progress<int>(pct => SummationProgress = pct);
                 var result = await _summationService.RecomputeEQD2DisplayAsync(
-                    _displayAlphaBeta, progress, ct);
+                    _doseOverlay.DisplayAlphaBeta, progress, ct);
 
                 if (result.Success)
                 {
@@ -286,23 +287,23 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
         private void RenderSummationScene()
         {
-            double[] summedSlice = _summationService.GetSummedSlice(CurrentSlice);
-            if (summedSlice == null) return;
+          double[] summedSlice = _summationService.GetSummedSlice(CurrentSlice);
+ if (summedSlice == null) return;
 
             double refDose = _summationService.SummedReferenceDoseGy;
-            if (refDose < DomainConstants.MinReferenceDoseGy) refDose = 1.0;
+    if (refDose < DomainConstants.MinReferenceDoseGy) refDose = 1.0;
 
-            int w = _snapshot.CtImage.XSize, h = _snapshot.CtImage.YSize;
+        int w = _snapshot.CtImage.XSize, h = _snapshot.CtImage.YSize;
 
-            if (_doseDisplayMode == DoseDisplayMode.Line)
+ if (_doseOverlay.DoseDisplayMode == DoseDisplayMode.Line)
             {
-                ClearDoseBitmap(w, h);
-                var contours = new ObservableCollection<IsodoseContourData>();
+  ClearDoseBitmap(w, h);
+        var contours = new ObservableCollection<IsodoseContourData>();
 
-                foreach (var level in _isodoseLevelArray)
-                {
-                    if (!level.IsVisible) continue;
-                    double thr = GetThresholdGy(level, refDose);
+  foreach (var level in _doseOverlay._isodoseLevelArray)
+      {
+    if (!level.IsVisible) continue;
+    double thr = _doseOverlay.GetThresholdGy(level, refDose);
                     if (thr <= 0) continue;
                     var polylines = MarchingSquares.GenerateContours(summedSlice, w, h, thr);
                     if (polylines.Count == 0) continue;
@@ -324,7 +325,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                     contours.Add(new IsodoseContourData { Geometry = geo, Stroke = brush, StrokeThickness = 1.0 });
                 }
                 ContourLines = contours;
-                StatusText = $"[Summation Â· Line] Slice {CurrentSlice} | Ref: {refDose:F2} Gy | Î±/Î²: {_displayAlphaBeta:F1}";
+                StatusText = $"[Summation · Line] Slice {CurrentSlice} | Ref: {refDose:F2} Gy | α/β: {_doseOverlay.DisplayAlphaBeta:F1}";
             }
             else
             {
@@ -354,18 +355,18 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 int stride = DoseImageSource.BackBufferStride;
                 for (int i = 0; i < h * stride; i++) pBuf[i] = 0;
 
-                if (_doseDisplayMode == DoseDisplayMode.Fill)
+                if (_doseOverlay.DoseDisplayMode == DoseDisplayMode.Fill)
                 {
                     int vc = 0;
-                    for (int i = 0; i < _isodoseLevelArray.Length; i++) if (_isodoseLevelArray[i].IsVisible) vc++;
+                    for (int i = 0; i < _doseOverlay._isodoseLevelArray.Length; i++) if (_doseOverlay._isodoseLevelArray[i].IsVisible) vc++;
                     if (vc > 0)
                     {
                         double[] thr = new double[vc]; uint[] col = new uint[vc]; int vi = 0;
-                        for (int i = 0; i < _isodoseLevelArray.Length; i++)
+                        for (int i = 0; i < _doseOverlay._isodoseLevelArray.Length; i++)
                         {
-                            if (!_isodoseLevelArray[i].IsVisible) continue;
-                            thr[vi] = GetThresholdGy(_isodoseLevelArray[i], refDose);
-                            col[vi] = (_isodoseLevelArray[i].Color & 0x00FFFFFF) | ((uint)_isodoseLevelArray[i].Alpha << 24);
+                            if (!_doseOverlay._isodoseLevelArray[i].IsVisible) continue;
+                            thr[vi] = _doseOverlay.GetThresholdGy(_doseOverlay._isodoseLevelArray[i], refDose);
+                            col[vi] = (_doseOverlay._isodoseLevelArray[i].Color & 0x00FFFFFF) | ((uint)_doseOverlay._isodoseLevelArray[i].Alpha << 24);
                             vi++;
                         }
                         for (int py = 0; py < h; py++)
@@ -379,10 +380,10 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                         }
                     }
                 }
-                else if (_doseDisplayMode == DoseDisplayMode.Colorwash)
+                else if (_doseOverlay.DoseDisplayMode == DoseDisplayMode.Colorwash)
                 {
-                    byte cwA = (byte)(System.Math.Max(0, System.Math.Min(1, _colorwashOpacity)) * 255);
-                    double minGy = refDose * _colorwashMinPercent, maxGy = refDose * RenderConstants.ColorwashMaxFraction;
+                    byte cwA = (byte)(System.Math.Max(0, System.Math.Min(1, _doseOverlay.ColorwashOpacity)) * 255);
+                    double minGy = refDose * _doseOverlay.ColorwashMinPercent, maxGy = refDose * RenderConstants.ColorwashMaxFraction;
                     double range = maxGy - minGy;
                     if (range > 0)
                         for (int py = 0; py < h; py++)
@@ -396,8 +397,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                         }
                 }
 
-                string ml = _doseDisplayMode == DoseDisplayMode.Fill ? "Fill" : "Colorwash";
-                StatusText = $"[Summation Â· {ml}] Slice {CurrentSlice} | Ref: {refDose:F2} Gy | Î±/Î²: {_displayAlphaBeta:F1}";
+                string ml = _doseOverlay.DoseDisplayMode == DoseDisplayMode.Fill ? "Fill" : "Colorwash";
+                StatusText = $"[Summation · {ml}] Slice {CurrentSlice} | Ref: {refDose:F2} Gy | α/β: {_doseOverlay.DisplayAlphaBeta:F1}";
                 DoseImageSource.AddDirtyRect(new System.Windows.Int32Rect(0, 0, w, h));
             }
             finally { DoseImageSource.Unlock(); }

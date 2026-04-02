@@ -54,7 +54,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 PlotModel.Series.Add(series);
             }
 
-            if (_isEQD2Enabled) RecalculateAllDVH();
+            if (_doseOverlay.IsEQD2Enabled) RecalculateAllDVH();
             ShowStructureContours = true;
             RefreshPlot();
             RequestRender();
@@ -78,7 +78,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             var oldSummaries = SummaryData.Where(s => s.Type == "EQD2").ToList();
             foreach (var s in oldSummaries) SummaryData.Remove(s);
 
-            if (!_isEQD2Enabled) { RefreshPlot(); return; }
+            if (!_doseOverlay.IsEQD2Enabled) { RefreshPlot(); return; }
 
             foreach (var entry in _dvhCache)
             {
@@ -86,14 +86,14 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 double alphaBeta = setting?.AlphaBeta ?? 3.0;
 
                 SummaryData.Add(((DVHService)_dvhService).BuildEQD2SummaryFromCurve(
-                    entry.DvhCurve, entry.PlanId, _numberOfFractions, alphaBeta, _meanMethod));
+                    entry.DvhCurve, entry.PlanId, _doseOverlay.NumberOfFractions, alphaBeta, _meanMethod));
 
                 DoseVolumePoint[] curveInGy = null;
                 if (entry.DvhCurve.Curve != null)
                     curveInGy = entry.DvhCurve.Curve.Select(p => new DoseVolumePoint(p[0], p[1])).ToArray();
 
                 var eqd2Curve = curveInGy != null
-                    ? EQD2Calculator.ConvertCurveToEQD2(curveInGy, _numberOfFractions, alphaBeta)
+                    ? EQD2Calculator.ConvertCurveToEQD2(curveInGy, _doseOverlay.NumberOfFractions, alphaBeta)
                     : new DoseVolumePoint[0];
 
                 var color = OxyColor.FromArgb(entry.Structure.ColorA, entry.Structure.ColorR,
@@ -114,7 +114,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
         private void OnStructureSettingChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(StructureAlphaBetaItem.AlphaBeta) && _isEQD2Enabled)
+            if (e.PropertyName == nameof(StructureAlphaBetaItem.AlphaBeta) && _doseOverlay.IsEQD2Enabled)
                 RecalculateAllDVH();
         }
 

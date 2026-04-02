@@ -8,6 +8,10 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 {
     public partial class MainViewModel
     {
+        // ════════════════════════════════════════════════════════
+        // PATIENT / PLAN DISPLAY (read-only, from snapshot)
+        // ════════════════════════════════════════════════════════
+
         public string PatientDisplayName
         {
             get
@@ -46,9 +50,13 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
                 int fx = _snapshot?.ActivePlan?.NumberOfFractions ?? 0;
                 if (fx <= 0) return "";
                 double gy = GetPrescriptionGy();
-                return $"{fx} fx Ã— {(fx > 0 ? gy / fx : 0):F2} Gy";
+                return $"{fx} fx × {(fx > 0 ? gy / fx : 0):F2} Gy";
             }
         }
+
+        // ════════════════════════════════════════════════════════
+        // CT IMAGE VIEWER STATE
+        // ════════════════════════════════════════════════════════
 
         private WriteableBitmap _ctImageSource;
         public WriteableBitmap CtImageSource { get => _ctImageSource; set => SetProperty(ref _ctImageSource, value); }
@@ -71,6 +79,13 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         private string _statusText;
         public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
 
+        private string _doseCursorText = "";
+        public string DoseCursorText { get => _doseCursorText; set => SetProperty(ref _doseCursorText, value); }
+
+        // ════════════════════════════════════════════════════════
+        // CONTOUR COLLECTIONS (bound by ItemsControl in XAML)
+        // ════════════════════════════════════════════════════════
+
         private ObservableCollection<IsodoseContourData> _contourLines;
         public ObservableCollection<IsodoseContourData> ContourLines { get => _contourLines; set => SetProperty(ref _contourLines, value); }
 
@@ -80,157 +95,58 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         private bool _showStructureContours;
         public bool ShowStructureContours { get => _showStructureContours; set { if (SetProperty(ref _showStructureContours, value)) RequestRender(); } }
 
-        private string _doseCursorText = "";
-        public string DoseCursorText { get => _doseCursorText; set => SetProperty(ref _doseCursorText, value); }
+        // ════════════════════════════════════════════════════════
+        // DOSE OVERLAY — delegated to DoseOverlayViewModel
+        // These properties forward to _doseOverlay so existing XAML bindings
+        // continue to work without path changes. New XAML should bind via
+        // DoseOverlay.PropertyName instead.
+        // ════════════════════════════════════════════════════════
 
-        private DoseDisplayMode _doseDisplayMode = DoseDisplayMode.Line;
+        /// <summary>Exposes the child ViewModel for new XAML bindings.</summary>
+        internal DoseOverlayViewModel DoseOverlay => _doseOverlay;
+
         public DoseDisplayMode DoseDisplayMode
         {
-            get => _doseDisplayMode;
-            set
-            {
-                if (SetProperty(ref _doseDisplayMode, value))
-                {
-                    OnPropertyChanged(nameof(IsLineMode));
-                    OnPropertyChanged(nameof(IsFillMode));
-                    OnPropertyChanged(nameof(IsColorwashMode));
-                    RequestRender();
-                }
-            }
+            get => _doseOverlay.DoseDisplayMode;
+            set => _doseOverlay.DoseDisplayMode = value;
         }
 
-        public bool IsLineMode { get => _doseDisplayMode == DoseDisplayMode.Line; set { if (value) DoseDisplayMode = DoseDisplayMode.Line; } }
-        public bool IsFillMode { get => _doseDisplayMode == DoseDisplayMode.Fill; set { if (value) DoseDisplayMode = DoseDisplayMode.Fill; } }
-        public bool IsColorwashMode { get => _doseDisplayMode == DoseDisplayMode.Colorwash; set { if (value) DoseDisplayMode = DoseDisplayMode.Colorwash; } }
+        public bool IsLineMode { get => _doseOverlay.IsLineMode; set => _doseOverlay.IsLineMode = value; }
+        public bool IsFillMode { get => _doseOverlay.IsFillMode; set => _doseOverlay.IsFillMode = value; }
+        public bool IsColorwashMode { get => _doseOverlay.IsColorwashMode; set => _doseOverlay.IsColorwashMode = value; }
 
-        private double _colorwashOpacity = 0.45;
-        public double ColorwashOpacity { get => _colorwashOpacity; set { if (SetProperty(ref _colorwashOpacity, value)) RequestRender(); } }
+        public double ColorwashOpacity { get => _doseOverlay.ColorwashOpacity; set => _doseOverlay.ColorwashOpacity = value; }
+        public double ColorwashMinPercent { get => _doseOverlay.ColorwashMinPercent; set => _doseOverlay.ColorwashMinPercent = value; }
 
-        private double _colorwashMinPercent = 0.10;
-        public double ColorwashMinPercent { get => _colorwashMinPercent; set { if (SetProperty(ref _colorwashMinPercent, value)) RequestRender(); } }
+        public IsodoseMode CurrentIsodoseMode { get => _doseOverlay.CurrentIsodoseMode; set => _doseOverlay.CurrentIsodoseMode = value; }
+        public bool IsRelativeMode { get => _doseOverlay.IsRelativeMode; set => _doseOverlay.IsRelativeMode = value; }
+        public bool IsAbsoluteMode { get => _doseOverlay.IsAbsoluteMode; set => _doseOverlay.IsAbsoluteMode = value; }
+        public bool IsRelativeModeSettingsVisible => _doseOverlay.IsRelativeModeSettingsVisible;
 
-        private IsodoseMode _isodoseMode = IsodoseMode.Relative;
-        public IsodoseMode CurrentIsodoseMode
-        {
-            get => _isodoseMode;
-            set
-            {
-                if (SetProperty(ref _isodoseMode, value))
-                {
-                    OnPropertyChanged(nameof(IsRelativeMode));
-                    OnPropertyChanged(nameof(IsAbsoluteMode));
-                    OnPropertyChanged(nameof(IsodoseColumnHeader));
-                    OnPropertyChanged(nameof(IsRelativeModeSettingsVisible));
-                    UpdateIsodoseLabels();
-                    RequestRender();
-                }
-            }
-        }
+        public IsodoseUnit IsodoseUnit { get => _doseOverlay.IsodoseUnit; set => _doseOverlay.IsodoseUnit = value; }
+        public bool IsPercentMode { get => _doseOverlay.IsPercentMode; set => _doseOverlay.IsPercentMode = value; }
+        public bool IsGyMode { get => _doseOverlay.IsGyMode; set => _doseOverlay.IsGyMode = value; }
+        public string IsodoseColumnHeader => _doseOverlay.IsodoseColumnHeader;
 
-        public bool IsRelativeMode { get => _isodoseMode == IsodoseMode.Relative; set { if (value) CurrentIsodoseMode = IsodoseMode.Relative; } }
-        public bool IsAbsoluteMode { get => _isodoseMode == IsodoseMode.Absolute; set { if (value) CurrentIsodoseMode = IsodoseMode.Absolute; } }
-        public bool IsRelativeModeSettingsVisible => _isodoseMode == IsodoseMode.Relative;
-
-        private IsodoseUnit _isodoseUnit = IsodoseUnit.Percent;
-        public IsodoseUnit IsodoseUnit
-        {
-            get => _isodoseUnit;
-            set
-            {
-                if (SetProperty(ref _isodoseUnit, value))
-                {
-                    OnPropertyChanged(nameof(IsPercentMode));
-                    OnPropertyChanged(nameof(IsGyMode));
-                    OnPropertyChanged(nameof(IsodoseColumnHeader));
-                    UpdateIsodoseLabels();
-                }
-            }
-        }
-
-        public bool IsPercentMode { get => _isodoseUnit == IsodoseUnit.Percent; set { if (value) IsodoseUnit = IsodoseUnit.Percent; } }
-        public bool IsGyMode { get => _isodoseUnit == IsodoseUnit.Gy; set { if (value) IsodoseUnit = IsodoseUnit.Gy; } }
-
-        public string IsodoseColumnHeader =>
-            _isodoseMode == IsodoseMode.Absolute ? "Dose (Gy)" :
-            _isodoseUnit == IsodoseUnit.Gy ? "Dose (Gy)" : "Level %";
-
-        public double ReferenceDoseGy
-        {
-            get
-            {
-                double prescGy = GetPrescriptionGy();
-                double norm = _snapshot?.ActivePlan?.PlanNormalization ?? 100.0;
-
-                if (double.IsNaN(norm) || norm <= 0) norm = 100.0;
-                else if (norm < DomainConstants.NormalizationFractionThreshold) norm *= 100.0;
-
-                double refGy = prescGy * (norm / 100.0);
-                return refGy < DomainConstants.MinReferenceDoseGy ? prescGy : refGy;
-            }
-        }
+        public double ReferenceDoseGy => _doseOverlay.ReferenceDoseGy;
 
         public ObservableCollection<IsodoseLevel> IsodoseLevels { get; }
         internal IsodoseLevel[] _isodoseLevelArray;
 
-        private string _isodosePresetName = "Eclipse (10)";
-        public string IsodosePresetName { get => _isodosePresetName; set => SetProperty(ref _isodosePresetName, value); }
+        public string IsodosePresetName { get => _doseOverlay.IsodosePresetName; set => _doseOverlay.IsodosePresetName = value; }
 
-        internal void UpdateIsodoseLabels()
-        {
-            if (_isodoseMode == IsodoseMode.Absolute)
-                foreach (var level in IsodoseLevels) level.Label = $"{level.AbsoluteDoseGy:F1} Gy";
-            else
-            {
-                double refGy = ReferenceDoseGy;
-                foreach (var level in IsodoseLevels)
-                    level.Label = _isodoseUnit == IsodoseUnit.Gy ? $"{(level.Fraction * refGy):F1} Gy" : $"{(level.Fraction * 100):F0}%";
-            }
-        }
+        internal void UpdateIsodoseLabels() => _doseOverlay.UpdateIsodoseLabels();
 
         internal double GetThresholdGy(IsodoseLevel level, double referenceDoseGy)
-        {
-            return _isodoseMode == IsodoseMode.Absolute ? level.AbsoluteDoseGy : referenceDoseGy * level.Fraction;
-        }
+            => _doseOverlay.GetThresholdGy(level, referenceDoseGy);
 
-        private bool _isEQD2Enabled;
-        public bool IsEQD2Enabled
-        {
-            get => _isEQD2Enabled;
-            set { if (SetProperty(ref _isEQD2Enabled, value)) { RequestRender(); if (_dvhCache.Count > 0) RecalculateAllDVH(); } }
-        }
+        public bool IsEQD2Enabled { get => _doseOverlay.IsEQD2Enabled; set => _doseOverlay.IsEQD2Enabled = value; }
 
-        private double _displayAlphaBeta = 3.0;
-        public double DisplayAlphaBeta
-        {
-            get => _displayAlphaBeta;
-            set
-            {
-                if (value <= 0) value = 0.5;
-                if (SetProperty(ref _displayAlphaBeta, value))
-                {
-                    RequestRender();
-                    RecomputeDisplayEQD2IfActive();
-                }
-            }
-        }
+        public double DisplayAlphaBeta { get => _doseOverlay.DisplayAlphaBeta; set => _doseOverlay.DisplayAlphaBeta = value; }
 
-        private int _numberOfFractions = 1;
-        public int NumberOfFractions
-        {
-            get => _numberOfFractions;
-            set
-            {
-                if (value < 1) value = 1;
-                if (SetProperty(ref _numberOfFractions, value))
-                {
-                    RequestRender();
-                    if (_dvhCache.Count > 0) RecalculateAllDVH();
-                }
-            }
-        }
+        public int NumberOfFractions { get => _doseOverlay.NumberOfFractions; set => _doseOverlay.NumberOfFractions = value; }
 
-        private string _summationAlphaBetaLabel = "";
-        public string SummationAlphaBetaLabel { get => _summationAlphaBetaLabel; set => SetProperty(ref _summationAlphaBetaLabel, value); }
+        public string SummationAlphaBetaLabel { get => _doseOverlay.SummationAlphaBetaLabel; set => _doseOverlay.SummationAlphaBetaLabel = value; }
 
         private EQD2MeanMethod _meanMethod = EQD2MeanMethod.Simple;
         public EQD2MeanMethod MeanMethod
@@ -245,6 +161,10 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             get => _useDifferentialMethod;
             set { if (SetProperty(ref _useDifferentialMethod, value)) MeanMethod = value ? EQD2MeanMethod.Differential : EQD2MeanMethod.Simple; }
         }
+
+        // ════════════════════════════════════════════════════════
+        // REGISTRATION OVERLAY
+        // ════════════════════════════════════════════════════════
 
         public enum OverlayMode { Off, Checkerboard, Blend }
 
@@ -268,8 +188,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
         public bool IsOverlayBlend { get => _overlayMode == OverlayMode.Blend; set { if (value) CurrentOverlayMode = OverlayMode.Blend; } }
         public bool IsOverlayVisible => _overlayMode != OverlayMode.Off;
 
-        public string OverlayModeLabel => _overlayMode == OverlayMode.Checkerboard ? "REGISTRATION CHECK â€” Checkerboard"
-            : _overlayMode == OverlayMode.Blend ? "REGISTRATION CHECK â€” Blend" : "";
+        public string OverlayModeLabel => _overlayMode == OverlayMode.Checkerboard ? "REGISTRATION CHECK — Checkerboard"
+            : _overlayMode == OverlayMode.Blend ? "REGISTRATION CHECK — Blend" : "";
 
         private double _overlayOpacity = 0.5;
         public double OverlayOpacity { get => _overlayOpacity; set { if (SetProperty(ref _overlayOpacity, value)) RequestRender(); } }
@@ -281,6 +201,10 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
 
         private WriteableBitmap _overlayImageSource;
         public WriteableBitmap OverlayImageSource { get => _overlayImageSource; set => SetProperty(ref _overlayImageSource, value); }
+
+        // ════════════════════════════════════════════════════════
+        // DVH DISPLAY
+        // ════════════════════════════════════════════════════════
 
         private bool _showPhysicalDVH = true;
         public bool ShowPhysicalDVH { get => _showPhysicalDVH; set { if (SetProperty(ref _showPhysicalDVH, value)) UpdatePlotVisibility(); } }

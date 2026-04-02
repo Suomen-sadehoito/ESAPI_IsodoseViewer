@@ -52,29 +52,29 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             double planTotalDoseGy = GetPrescriptionGy();
             double planNormalization = _snapshot?.ActivePlan?.PlanNormalization ?? 100.0;
 
-            EQD2Settings eqd2 = _isEQD2Enabled
-                ? new EQD2Settings { IsEnabled = true, AlphaBeta = _displayAlphaBeta, NumberOfFractions = _numberOfFractions }
-                : null;
+            EQD2Settings eqd2 = _doseOverlay.IsEQD2Enabled
+          ? new EQD2Settings { IsEnabled = true, AlphaBeta = _doseOverlay.DisplayAlphaBeta, NumberOfFractions = _doseOverlay.NumberOfFractions }
+        : null;
 
-            if (_doseDisplayMode == DoseDisplayMode.Line)
-            {
-                _renderingService.RenderDoseImage(DoseImageSource, CurrentSlice,
-                    planTotalDoseGy, planNormalization, _isodoseLevelArray,
-                    _doseDisplayMode, _colorwashOpacity, _colorwashMinPercent, eqd2);
+        if (_doseOverlay.DoseDisplayMode == DoseDisplayMode.Line)
+  {
+_renderingService.RenderDoseImage(DoseImageSource, CurrentSlice,
+             planTotalDoseGy, planNormalization, _doseOverlay._isodoseLevelArray,
+   _doseOverlay.DoseDisplayMode, _doseOverlay.ColorwashOpacity, _doseOverlay.ColorwashMinPercent, eqd2);
 
-                var result = _renderingService.GenerateVectorContours(CurrentSlice,
-                    planTotalDoseGy, planNormalization, _isodoseLevelArray, eqd2);
+        var result = _renderingService.GenerateVectorContours(CurrentSlice,
+  planTotalDoseGy, planNormalization, _doseOverlay._isodoseLevelArray, eqd2);
 
-                ContourLines = new ObservableCollection<IsodoseContourData>(result.Contours);
-                StatusText = result.StatusText ?? "";
-            }
-            else
-            {
-                if (_contourLines?.Count > 0) ContourLines = new ObservableCollection<IsodoseContourData>();
+   ContourLines = new ObservableCollection<IsodoseContourData>(result.Contours);
+         StatusText = result.StatusText ?? "";
+         }
+     else
+  {
+    if (_contourLines?.Count > 0) ContourLines = new ObservableCollection<IsodoseContourData>();
 
-                StatusText = _renderingService.RenderDoseImage(DoseImageSource, CurrentSlice,
-                    planTotalDoseGy, planNormalization, _isodoseLevelArray,
-                    _doseDisplayMode, _colorwashOpacity, _colorwashMinPercent, eqd2);
+             StatusText = _renderingService.RenderDoseImage(DoseImageSource, CurrentSlice,
+        planTotalDoseGy, planNormalization, _doseOverlay._isodoseLevelArray,
+         _doseOverlay.DoseDisplayMode, _doseOverlay.ColorwashOpacity, _doseOverlay.ColorwashMinPercent, eqd2);
             }
         }
 
@@ -180,8 +180,8 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             }
             else
             {
-                EQD2Settings eqd2 = _isEQD2Enabled
-                    ? new EQD2Settings { IsEnabled = true, AlphaBeta = _displayAlphaBeta, NumberOfFractions = _numberOfFractions }
+                EQD2Settings eqd2 = _doseOverlay.IsEQD2Enabled
+                    ? new EQD2Settings { IsEnabled = true, AlphaBeta = _doseOverlay.DisplayAlphaBeta, NumberOfFractions = _doseOverlay.NumberOfFractions }
                     : null;
 
                 doseGy = _renderingService.GetDoseAtPixel(CurrentSlice, pixelX, pixelY, eqd2);
@@ -190,7 +190,7 @@ namespace ESAPI_EQD2Viewer.UI.ViewModels
             if (double.IsNaN(doseGy) || doseGy <= 0) DoseCursorText = "";
             else
             {
-                string label = (_isSummationActive || _isEQD2Enabled) ? "EQD2" : "Phys";
+                string label = (_isSummationActive || _doseOverlay.IsEQD2Enabled) ? "EQD2" : "Phys";
                 DoseCursorText = $"{label}: {doseGy:F2} Gy  ({pixelX}, {pixelY})";
             }
         }
