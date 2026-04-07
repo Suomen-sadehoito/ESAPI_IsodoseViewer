@@ -1,0 +1,16 @@
+<Project>
+  <!--
+    Strip the platform folder segment (x64 / AnyCPU) from the output path
+    of SDK-style projects.  Without this, projects that declare
+    <Platforms>x64</Platforms> write to  bin\x64\Debug\net48\  while
+    the .sln file may map them to "Any CPU" which looks for
+    bin\Debug\net48\  — causing CS0006 "metadata file not found" on
+    first build after a fresh clone.
+
+    With this property every Configuration × Platform combination
+    resolves to the same  bin\<Configuration>\net48\  folder.
+  -->
+  <PropertyGroup>
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+  </PropertyGroup>
+</Project>
