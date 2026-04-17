@@ -444,3 +444,6 @@ warnings_*.txt
 *_warnings.txt
 remaining_warnings.txt
 unique_warnings.txt
+
+# Custom build output directory from Directory.Build.props
+BuildOutput/
