@@ -1,4 +1,5 @@
-﻿using EQD2Viewer.Core.Logging;
+﻿#nullable enable annotations
+using EQD2Viewer.Core.Logging;
 using EQD2Viewer.Core.Calculations;
 using VMS.TPS.Common.Model.Types;
 using VMS.TPS.Common.Model.API;
@@ -253,6 +254,45 @@ namespace EQD2Viewer.Esapi.Adapters
                 SimpleLogger.Warning($"Could not get plan FOR: {ex.Message}");
                 return "";
             }
+        }
+
+        /// <summary>
+        /// Loads the full CT volume for a specific plan.
+        /// </summary>
+        public VolumeData? LoadCtVolume(string courseId, string planId)
+        {
+            try
+            {
+                var course = _patient.Courses?.FirstOrDefault(c => c.Id == courseId);
+                var plan = course?.PlanSetups?.FirstOrDefault(p => p.Id == planId);
+                var img = plan?.StructureSet?.Image;
+
+                if (img != null)
+                {
+                    int cx = img.XSize, cy = img.YSize, cz = img.ZSize;
+                    var ctVoxels = new int[cz][,];
+                    for (int z = 0; z < cz; z++)
+                    {
+                        ctVoxels[z] = new int[cx, cy];
+                        img.GetVoxels(z, ctVoxels[z]);
+                    }
+
+                    int midZ = cz / 2;
+                    int huOffset = ImageUtils.DetermineHuOffset(ctVoxels[midZ], cx, cy);
+
+                    return new VolumeData
+                    {
+                        Geometry = ToGeometry(img),
+                        Voxels = ctVoxels,
+                        HuOffset = huOffset
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                SimpleLogger.Error($"LoadCtVolume failed for {courseId}/{planId}", ex);
+            }
+            return null;
         }
 
         /// <summary>

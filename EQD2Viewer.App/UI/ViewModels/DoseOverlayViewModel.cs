@@ -3,6 +3,7 @@ using EQD2Viewer.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 
 namespace EQD2Viewer.App.UI.ViewModels
 {
@@ -319,7 +320,14 @@ namespace EQD2Viewer.App.UI.ViewModels
         /// <summary>
         /// Loads a named isodose preset, replacing all current levels.
         /// </summary>
-        public void LoadPreset(string preset)
+        public void LoadPreset(string preset) => LoadPreset(preset, 0);
+
+        /// <summary>
+        /// Loads a named preset. For <c>"AutoFromDmax"</c> the caller passes the current max
+        /// dose so the preset can be scaled to the actual data (essential when EQD2 sums
+        /// exceed the static clinical presets' range).
+        /// </summary>
+        public void LoadPreset(string preset, double maxDoseGy)
         {
             IsodoseLevel[] levels;
             switch (preset)
@@ -354,6 +362,13 @@ namespace EQD2Viewer.App.UI.ViewModels
                     IsodosePresetName = "Palliative";
                     CurrentIsodoseMode = IsodoseMode.Absolute;
                     break;
+                case "AutoFromDmax":
+                    levels = BuildAutoScalePreset(maxDoseGy);
+                    IsodosePresetName = maxDoseGy > 0
+                        ? $"Auto ({maxDoseGy:F1} Gy peak)"
+                        : "Auto (no data)";
+                    CurrentIsodoseMode = IsodoseMode.Absolute;
+                    break;
                 default:
                     levels = IsodoseLevel.GetDefaults();
                     IsodosePresetName = "Default (4)";
@@ -362,9 +377,57 @@ namespace EQD2Viewer.App.UI.ViewModels
 
             IsodoseLevels.Clear();
             foreach (var l in levels) IsodoseLevels.Add(l);
+            SortLevels();
             RebuildIsodoseArray();
             UpdateIsodoseLabels();
             _bus.RequestRender();
+        }
+
+        /// <summary>
+        /// Builds an 8-level preset scaled to the supplied peak: 95/80/60/40/20/10/5/2% of max.
+        /// Colours flow red → orange → yellow → green → cyan → blue.
+        /// </summary>
+        private static IsodoseLevel[] BuildAutoScalePreset(double maxDoseGy)
+        {
+            if (maxDoseGy <= 0) return IsodoseLevel.GetReIrradiationPreset();
+
+            var pctColor = new (double pct, uint color, byte alpha)[]
+            {
+                (0.95, 0xFFFF0000, 180),
+                (0.80, 0xFFFF4400, 160),
+                (0.60, 0xFFFF8800, 140),
+                (0.40, 0xFFFFFF00, 130),
+                (0.20, 0xFF00FF00, 120),
+                (0.10, 0xFF00BBFF, 100),
+                (0.05, 0xFF0000FF,  85),
+                (0.02, 0xFF8800FF,  70),
+            };
+            var result = new IsodoseLevel[pctColor.Length];
+            for (int i = 0; i < pctColor.Length; i++)
+            {
+                double gy = System.Math.Round(maxDoseGy * pctColor[i].pct, 1);
+                result[i] = new IsodoseLevel(0, gy, $"{gy:F1} Gy", pctColor[i].color, pctColor[i].alpha);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Sorts IsodoseLevels in place by threshold descending (hottest at the top).
+        /// Called on Add, on value-edit commit, and on LoadPreset so the grid ordering
+        /// tracks the actual dose scale regardless of insertion history.
+        /// </summary>
+        public void SortLevels()
+        {
+            if (IsodoseLevels.Count < 2) return;
+            var sorted = _isodoseMode == IsodoseMode.Absolute
+                ? IsodoseLevels.OrderByDescending(l => l.AbsoluteDoseGy).ToList()
+                : IsodoseLevels.OrderByDescending(l => l.Fraction).ToList();
+            // ObservableCollection doesn't expose Sort; move items into place.
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                int currentIdx = IsodoseLevels.IndexOf(sorted[i]);
+                if (currentIdx != i) IsodoseLevels.Move(currentIdx, i);
+            }
         }
 
         /// <summary>

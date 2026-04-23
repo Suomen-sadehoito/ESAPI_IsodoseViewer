@@ -33,7 +33,7 @@
   </PropertyGroup>
   <!-- Sama HasRealEsapi-logiikka kuin pÃ¤Ã¤projektissa -->
   <PropertyGroup>
-    <RealEsapiLibPath>$(MSBuildThisFileDirectory)..\lib\</RealEsapiLibPath>
+    <RealEsapiLibPath>$(MSBuildThisFileDirectory)..\lib\ESAPI\</RealEsapiLibPath>
     <HasRealEsapi>false</HasRealEsapi>
     <HasRealEsapi Condition="Exists('$(RealEsapiLibPath)VMS.TPS.Common.Model.API.dll')">true</HasRealEsapi>
     <HasRealEsapi Condition="'$(CI)' == 'true'">false</HasRealEsapi>

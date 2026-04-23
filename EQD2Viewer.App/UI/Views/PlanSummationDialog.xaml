@@ -17,12 +17,13 @@
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>  <!-- 0: Header -->
+            <RowDefinition Height="Auto"/>  <!-- 1: Method + α/β -->
+            <RowDefinition Height="*"/>     <!-- 2: Plan table -->
+            <RowDefinition Height="Auto"/>  <!-- 3: Registration progress -->
+            <RowDefinition Height="Auto"/>  <!-- 4: Formula -->
+            <RowDefinition Height="Auto"/>  <!-- 5: Debug expander -->
+            <RowDefinition Height="Auto"/>  <!-- 6: Action buttons -->
         </Grid.RowDefinitions>
 
         <!-- HEADER -->
@@ -43,10 +44,13 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="Method" Foreground="#5C6475" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                    <RadioButton x:Name="RbEQD2" Content=" EQD2 summation" IsChecked="True" Foreground="#F0F2F5" Margin="0,0,16,0" GroupName="SumMethod" FontSize="11" VerticalContentAlignment="Center"/>
-                    <RadioButton x:Name="RbPhysical" Content=" Physical dose" Foreground="#9BA3B0" GroupName="SumMethod" FontSize="11" VerticalContentAlignment="Center"/>
+                    <RadioButton x:Name="RbEQD2" Content="EQD2 summation" IsChecked="True" Foreground="#F0F2F5" Margin="0,0,16,0" GroupName="SumMethod" FontSize="11" VerticalContentAlignment="Center"
+                                 ToolTip="Each plan is converted to EQD2 per voxel (using its own fraction count and the Global α/β below) before being summed."/>
+                    <RadioButton x:Name="RbPhysical" Content="Physical dose" Foreground="#9BA3B0" GroupName="SumMethod" FontSize="11" VerticalContentAlignment="Center"
+                                 ToolTip="Plans are summed as delivered physical dose, without EQD2 conversion. Use only when all plans share the same fractionation."/>
                 </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                            ToolTip="α/β ratio used to convert each plan to EQD2 before summation. Typical values: 3 Gy (late-responding OARs), 10 Gy (tumour). Accepts both ',' and '.' as decimal separator.">
                     <TextBlock Text="Global α/β" Foreground="#5C6475" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <TextBox x:Name="TbAlphaBeta" Text="3.0" Width="48" Background="#222830" Foreground="#F0F2F5" BorderBrush="#2A3040" Padding="6,3" FontSize="11" VerticalContentAlignment="Center"/>
                     <TextBlock Text=" Gy" Foreground="#5C6475" VerticalAlignment="Center" FontSize="11"/>
@@ -73,7 +77,11 @@
                           GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1A1E26" BorderThickness="0" FontSize="11" HeadersVisibility="Column" RowHeight="32">
                     <DataGrid.ColumnHeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}"/></DataGrid.ColumnHeaderStyle>
                     <DataGrid.Columns>
-                        <DataGridCheckBoxColumn Header="Include" Width="55" Binding="{Binding IsIncluded, UpdateSourceTrigger=PropertyChanged}"/>
+                        <DataGridCheckBoxColumn Width="55" Binding="{Binding IsIncluded, UpdateSourceTrigger=PropertyChanged}">
+                            <DataGridCheckBoxColumn.Header>
+                                <TextBlock Text="Include" ToolTip="Tick to add this plan into the summation."/>
+                            </DataGridCheckBoxColumn.Header>
+                        </DataGridCheckBoxColumn>
                         <DataGridTemplateColumn Header="Ref" Width="35">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -122,17 +130,18 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTemplateColumn Header="DIR Field (.mha)" Width="*" MinWidth="160">
+                        <DataGridTemplateColumn Header="Deformable (DIR)" Width="*" MinWidth="160">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Grid>
-                                        <!-- Reference row: no DIR field -->
-                                        <TextBlock Text="—" Foreground="#3A4050" FontSize="10" VerticalAlignment="Center" Padding="6,0">
+                                        <!-- Reference row: no DIR needed -->
+                                        <TextBlock Text="N/A (reference)" Foreground="#3A4050" FontSize="10" FontStyle="Italic" VerticalAlignment="Center" Padding="6,0"
+                                                   ToolTip="DIR maps moving plans onto the reference CT grid, so the reference itself has no DIR.">
                                             <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers><DataTrigger Binding="{Binding IsReference}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
                                             </Style></TextBlock.Style>
                                         </TextBlock>
-                                        <!-- Non-reference row: path TextBox + browse button -->
+                                        <!-- Non-reference row: Calculate button or Status -->
                                         <Grid>
                                             <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Visible"/>
                                                 <Style.Triggers><DataTrigger Binding="{Binding IsReference}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
@@ -141,18 +150,44 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0"
-                                                     Text="{Binding DeformationFieldPath, UpdateSourceTrigger=PropertyChanged}"
-                                                     Background="#181C22" Foreground="#9BA3B0" BorderBrush="#2A3040"
-                                                     FontSize="9.5" FontFamily="Consolas" Padding="4,2"
-                                                     VerticalContentAlignment="Center"
-                                                     ToolTip="{Binding DeformationFieldPath}"/>
-                                            <Button Grid.Column="1" Content="…"
-                                                    Click="BrowseDirField_Click"
-                                                    Width="22" Margin="2,0,0,0" Padding="2,0"
+                                            
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0">
+                                                <TextBlock Text="{Binding DirStatus}" FontSize="10.5" VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#9BA3B0"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasDeformationField}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#4CAF6E"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+
+                                            <Button Grid.Column="1" Content="Calculate DIR"
+                                                    Click="CalculateDir_Click"
+                                                    Padding="8,2" Margin="2,0,4,0"
                                                     Background="#1A2A3A" Foreground="#4C9EEB"
-                                                    BorderBrush="#2A3A5A" FontSize="11" Cursor="Hand"
-                                                    ToolTip="Browse for .mha deformation field file"/>
+                                                    BorderBrush="#2A3A5A" FontSize="10.5" Cursor="Hand"
+                                                    IsEnabled="{Binding IsDirCalculationEnabled}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="ToolTip" Value="Run deformable image registration (SimpleITK B-spline) between this plan's CT and the reference CT. Takes 30 s – 3 min depending on volume size."/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCalculating}" Value="True">
+                                                                <Setter Property="Content" Value="Calculating..."/>
+                                                                <Setter Property="ToolTip" Value="Registration running — click Cancel below to abort."/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsDirCalculationEnabled}" Value="False">
+                                                                <Setter Property="ToolTip" Value="DIR module (EQD2Viewer.Registration.ITK.dll) not loaded. Build with the Release-WithITK configuration and deploy SimpleITK DLLs alongside the plugin."/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
                                         </Grid>
                                     </Grid>
                                 </DataTemplate>
@@ -163,8 +198,24 @@
             </Grid>
         </Border>
 
+        <!-- PROGRESS (Registration) -->
+        <Border Grid.Row="3" Background="#12151B" BorderBrush="#2A3040" BorderThickness="1" CornerRadius="4" Margin="0,0,0,8"
+                Visibility="{Binding IsAnyCalculating, Converter={StaticResource BoolToVis}, RelativeSource={RelativeSource AncestorType=Window}}">
+            <Grid Margin="12,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock x:Name="TbRegistrationStatus" Text="Computing deformable registration..." Foreground="#F0F2F5" FontSize="11" Margin="0,0,0,4"/>
+                    <ProgressBar x:Name="PbRegistration" Height="4" Minimum="0" Maximum="100" Value="0" Background="#1A1E26" Foreground="#4C9EEB" BorderThickness="0"/>
+                </StackPanel>
+                <Button Grid.Column="1" Content="Cancel" Click="CancelRegistration_Click" Style="{StaticResource Btn}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
         <!-- FORMULA -->
-        <Border Grid.Row="3" Style="{StaticResource Card}" Margin="0,0,0,8">
+        <Border Grid.Row="4" Style="{StaticResource Card}" Margin="0,0,0,8">
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel>
@@ -183,7 +234,7 @@
         </Border>
 
         <!-- DEBUG -->
-        <Expander Grid.Row="4" Header="Registration diagnostics" Foreground="#5C6475" FontSize="10" Margin="0,0,0,8" IsExpanded="False">
+        <Expander Grid.Row="5" Header="Registration diagnostics" Foreground="#5C6475" FontSize="10" Margin="0,0,0,8" IsExpanded="False">
             <Border Background="#12151B" BorderBrush="#2A3040" BorderThickness="1" CornerRadius="0,0,6,6" Padding="10,8">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -197,10 +248,12 @@
         </Expander>
 
         <!-- ACTIONS -->
-        <Grid Grid.Row="5">
+        <Grid Grid.Row="6">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <Button Grid.Column="1" Content="Compute summation" Style="{StaticResource BtnPrimary}" Click="Compute_Click" IsDefault="True" Width="160" Margin="0,0,8,0" FontWeight="SemiBold"/>
-            <Button Grid.Column="2" Content="Cancel" Style="{StaticResource Btn}" IsCancel="True" Width="80"/>
+            <Button Grid.Column="1" Content="Compute summation" Style="{StaticResource BtnPrimary}" Click="Compute_Click" IsDefault="True" Width="160" Margin="0,0,8,0" FontWeight="SemiBold"
+                    ToolTip="Close this dialog and run the voxel-by-voxel summation using the selected plans, registrations, DIRs and α/β."/>
+            <Button Grid.Column="2" Content="Cancel" Style="{StaticResource Btn}" IsCancel="True" Width="80"
+                    ToolTip="Discard these settings and close the dialog. No summation is run."/>
         </Grid>
     </Grid>
 </Window>

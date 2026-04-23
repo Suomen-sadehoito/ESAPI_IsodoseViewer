@@ -8,9 +8,9 @@ Standard Release builds do not bundle or distribute any of the libraries listed 
 
 ## SimpleITK
 
-**Version:** 2.3.0  
-**NuGet:** https://www.nuget.org/packages/SimpleITK/  
+**Version:** 2.5.3  
 **Source:** https://github.com/SimpleITK/SimpleITK  
+**Download:** https://github.com/SimpleITK/SimpleITK/releases/tag/v2.5.3  
 **License:** Apache License, Version 2.0
 
 ```
@@ -34,7 +34,7 @@ limitations under the License.
 
 ## ITK — Insight Toolkit
 
-**Version:** ≥ 5.3 (bundled with SimpleITK 2.3.0)  
+**Version:** 5.4.5 (bundled with SimpleITK 2.5.3)  
 **Source:** https://github.com/InsightSoftwareConsortium/ITK  
 **License:** Apache License, Version 2.0
 

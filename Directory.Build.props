@@ -1,5 +1,6 @@
 <Project>
 	<PropertyGroup>
+		<Configurations>Debug;Release;Release-WithITK</Configurations>
 		<AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
 
 		<OutputPath>$(MSBuildThisFileDirectory)BuildOutput\$(Configuration)\</OutputPath>
@@ -15,7 +16,7 @@
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+	<PropertyGroup Condition="'$(Configuration)' == 'Release' Or '$(Configuration)' == 'Release-WithITK'">
 		<DebugType>none</DebugType>
 		<DebugSymbols>false</DebugSymbols>
 	</PropertyGroup>

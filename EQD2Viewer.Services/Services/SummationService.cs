@@ -3,7 +3,6 @@ using EQD2Viewer.Core.Calculations;
 using EQD2Viewer.Core.Models;
 using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Data;
-using System.IO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,6 +49,7 @@ namespace EQD2Viewer.Services
 
         private double _summedReferenceDoseGy;
         private double _maxDoseGy;
+        private int _maxSliceZ, _maxPixelX, _maxPixelY;
         private double _currentDisplayAlphaBeta;
         private volatile bool _hasSummedDose;
         private bool _disposed;
@@ -130,12 +130,12 @@ namespace EQD2Viewer.Services
             }
         }
 
-        public Task<SummationResult> ComputeAsync(IProgress<int> progress, CancellationToken ct)
+        public Task<SummationResult> ComputeAsync(IProgress<int>? progress, CancellationToken ct)
         {
             return Task.Run(() => ComputeCore(progress, ct), ct);
         }
 
-        private SummationResult ComputeCore(IProgress<int> progress, CancellationToken ct)
+        private SummationResult ComputeCore(IProgress<int>? progress, CancellationToken ct)
         {
             try
             {
@@ -149,6 +149,7 @@ namespace EQD2Viewer.Services
 
                 _summedSlices = new double[refZ][];
                 double globalMax = 0;
+                int maxZ = 0, maxX = 0, maxY = 0;
 
                 for (int z = 0; z < refZ; z++)
                 {
@@ -190,7 +191,13 @@ namespace EQD2Viewer.Services
                     }
 
                     for (int i = 0; i < sliceSize; i++)
-                        if (eqd2Slice[i] > globalMax) globalMax = eqd2Slice[i];
+                    {
+                        if (eqd2Slice[i] > globalMax)
+                        {
+                            globalMax = eqd2Slice[i];
+                            maxZ = z; maxX = i % refW; maxY = i / refW;
+                        }
+                    }
 
                     _summedSlices[z] = eqd2Slice;
 
@@ -200,6 +207,7 @@ namespace EQD2Viewer.Services
 
                 progress?.Report(100);
                 _maxDoseGy = globalMax;
+                _maxSliceZ = maxZ; _maxPixelX = maxX; _maxPixelY = maxY;
                 _summedReferenceDoseGy = ComputeReferenceDose(_config!, _currentDisplayAlphaBeta);
                 _hasSummedDose = true;
 
@@ -210,6 +218,9 @@ namespace EQD2Viewer.Services
                     MaxDoseGy = globalMax,
                     TotalReferenceDoseGy = _summedReferenceDoseGy,
                     SliceCount = refZ,
+                    MaxDoseSliceZ = maxZ,
+                    MaxDosePixelX = maxX,
+                    MaxDosePixelY = maxY,
                     StatusMessage = $"[{label} Sum] {_config.Plans.Count} plans | Max: {globalMax:F2} Gy | Ref: {_summedReferenceDoseGy:F2} Gy"
                 };
             }
@@ -227,7 +238,7 @@ namespace EQD2Viewer.Services
         }
 
         public Task<SummationResult> RecomputeEQD2DisplayAsync(double displayAlphaBeta,
-            IProgress<int> progress, CancellationToken ct)
+            IProgress<int>? progress, CancellationToken ct)
         {
             return Task.Run(() =>
    {
@@ -253,6 +264,7 @@ namespace EQD2Viewer.Services
            int refZ = _refZ, sliceSize = _refW * _refH;
            int planCount = _cachedPlans.Count;
            double globalMax = 0;
+           int maxZ = 0, maxX = 0, maxY = 0;
 
            for (int z = 0; z < refZ; z++)
            {
@@ -272,7 +284,13 @@ namespace EQD2Viewer.Services
                    }
                }
                for (int i = 0; i < sliceSize; i++)
-                   if (eqd2Slice[i] > globalMax) globalMax = eqd2Slice[i];
+               {
+                   if (eqd2Slice[i] > globalMax)
+                   {
+                       globalMax = eqd2Slice[i];
+                       maxZ = z; maxX = i % _refW; maxY = i / _refW;
+                   }
+               }
                _summedSlices![z] = eqd2Slice;
                if (z % RenderConstants.SummationProgressInterval == 0)
                    progress?.Report((int)((z + 1) * 100.0 / refZ));
@@ -280,6 +298,7 @@ namespace EQD2Viewer.Services
 
            progress?.Report(100);
            _maxDoseGy = globalMax;
+           _maxSliceZ = maxZ; _maxPixelX = maxX; _maxPixelY = maxY;
            _summedReferenceDoseGy = ComputeReferenceDose(_config!, displayAlphaBeta);
 
            string label = _config!.Method == SummationMethod.EQD2 ? "EQD2" : "Physical";
@@ -289,6 +308,9 @@ namespace EQD2Viewer.Services
                MaxDoseGy = globalMax,
                TotalReferenceDoseGy = _summedReferenceDoseGy,
                SliceCount = refZ,
+               MaxDoseSliceZ = maxZ,
+               MaxDosePixelX = maxX,
+               MaxDosePixelY = maxY,
                StatusMessage = $"[{label} Sum] {_config.Plans.Count} plans | Max: {globalMax:F2} Gy | Ref: {_summedReferenceDoseGy:F2} Gy | a/b={displayAlphaBeta:F1}"
            };
        }
@@ -424,38 +446,82 @@ namespace EQD2Viewer.Services
             var dg = cp.DoseGeo;
             var rg = _refGeo!;
             var dvf = cp.DeformationField!;
+            bool fast = cp.DvfMatchesRef;
+
+            // DVF origin/direction pre-multiplied for the slow path.
+            double dvfOx = dvf.Origin.X, dvfOy = dvf.Origin.Y, dvfOz = dvf.Origin.Z;
+            double dvfXDx = dvf.XDirection.X, dvfXDy = dvf.XDirection.Y, dvfXDz = dvf.XDirection.Z;
+            double dvfYDx = dvf.YDirection.X, dvfYDy = dvf.YDirection.Y, dvfYDz = dvf.YDirection.Z;
+            double dvfZDx = dvf.ZDirection.X, dvfZDy = dvf.ZDirection.Y, dvfZDz = dvf.ZDirection.Z;
+            double invDvfXRes = 1.0 / dvf.XRes, invDvfYRes = 1.0 / dvf.YRes, invDvfZRes = 1.0 / dvf.ZRes;
 
             for (int py = 0; py < refH; py++)
             {
                 int ro = py * refW;
                 for (int px = 0; px < refW; px++)
                 {
-                    // World position of this reference voxel
+                    // World position of reference voxel (px, py, sliceZ).
                     double wx = rg.Ox + sliceZ * rg.Zx + py * rg.Yx + px * rg.Xx;
                     double wy = rg.Oy + sliceZ * rg.Zy + py * rg.Yy + px * rg.Xy;
                     double wz = rg.Oz + sliceZ * rg.Zz + py * rg.Yz + px * rg.Xz;
 
-                    // Forward-mapped displacement (reference → moving)
+                    // Displacement lookup — fast path when DVF grid == reference grid,
+                    // slow path otherwise (world → DVF index via projection on its direction vectors).
                     double dx = 0, dy = 0, dz = 0;
-                    if (px < dvf.XSize && py < dvf.YSize && sliceZ < dvf.ZSize)
+                    if (fast)
                     {
-                        var v = dvf.Vectors[sliceZ][px, py];
-                        dx = v.X; dy = v.Y; dz = v.Z;
+                        if (px < dvf.XSize && py < dvf.YSize && sliceZ < dvf.ZSize)
+                        {
+                            var v = dvf.Vectors[sliceZ][px, py];
+                            dx = v.X; dy = v.Y; dz = v.Z;
+                        }
+                    }
+                    else
+                    {
+                        double dvfDiffX = wx - dvfOx, dvfDiffY = wy - dvfOy, dvfDiffZ = wz - dvfOz;
+                        int dvfIx = (int)Math.Round((dvfDiffX * dvfXDx + dvfDiffY * dvfXDy + dvfDiffZ * dvfXDz) * invDvfXRes);
+                        int dvfIy = (int)Math.Round((dvfDiffX * dvfYDx + dvfDiffY * dvfYDy + dvfDiffZ * dvfYDz) * invDvfYRes);
+                        int dvfIz = (int)Math.Round((dvfDiffX * dvfZDx + dvfDiffY * dvfZDy + dvfDiffZ * dvfZDz) * invDvfZRes);
+                        if (dvfIx >= 0 && dvfIx < dvf.XSize && dvfIy >= 0 && dvfIy < dvf.YSize && dvfIz >= 0 && dvfIz < dvf.ZSize)
+                        {
+                            var v = dvf.Vectors[dvfIz][dvfIx, dvfIy];
+                            dx = v.X; dy = v.Y; dz = v.Z;
+                        }
                     }
 
+                    // Mapped position in the moving (plan) image's world frame.
                     double mwx = wx + dx, mwy = wy + dy, mwz = wz + dz;
 
                     double diffX = mwx - dg.Ox, diffY = mwy - dg.Oy, diffZ = mwz - dg.Oz;
                     double fz = (diffX * dg.ZDx + diffY * dg.ZDy + diffZ * dg.ZDz) / dg.ZRes;
-                    int iz = (int)Math.Round(fz);
-                    if (iz < 0 || iz >= dg.ZSize) continue;
+
+                    // Trilinear in Z: sample two adjacent slices and blend by fractional z.
+                    int iz0 = (int)Math.Floor(fz);
+                    double fzFrac = fz - iz0;
+                    int iz1 = iz0 + 1;
+                    if (iz0 < 0 || iz0 >= dg.ZSize)
+                    {
+                        if (iz1 < 0 || iz1 >= dg.ZSize) continue;
+                        iz0 = iz1; fzFrac = 0.0;
+                    }
+                    else if (iz1 >= dg.ZSize) { iz1 = iz0; fzFrac = 0.0; }
 
                     double fx = (diffX * dg.XDx + diffY * dg.XDy + diffZ * dg.XDz) / dg.XRes;
                     double fy = (diffX * dg.YDx + diffY * dg.YDy + diffZ * dg.YDz) / dg.YRes;
 
-                    double dGy = ImageUtils.BilinearSampleRaw(
-                        cp.DoseVoxels[iz], dg.XSize, dg.YSize, fx, fy,
+                    double d0 = ImageUtils.BilinearSampleRaw(
+                        cp.DoseVoxels[iz0], dg.XSize, dg.YSize, fx, fy,
                         cp.RawScale, cp.RawOffset, cp.UnitToGy);
+                    double dGy;
+                    if (iz1 != iz0 && fzFrac > 0.0)
+                    {
+                        double d1 = ImageUtils.BilinearSampleRaw(
+                            cp.DoseVoxels[iz1], dg.XSize, dg.YSize, fx, fy,
+                            cp.RawScale, cp.RawOffset, cp.UnitToGy);
+                        dGy = d0 * (1.0 - fzFrac) + d1 * fzFrac;
+                    }
+                    else dGy = d0;
+
                     if (dGy > 0)
                         sliceData[ro + px] += dGy;
                 }
@@ -556,7 +622,68 @@ namespace EQD2Viewer.Services
             var cg = cp.CtGeo;
             var rg = _refGeo!;
 
-            if (cp.TransformMatrix == null)
+            if (cp.DeformationField != null)
+            {
+                var dvf = cp.DeformationField;
+                bool fast = cp.DvfMatchesRef;
+                int huOff = cp.CtHuOffset;
+                int cxSize = cg.XSize, cySize = cg.YSize, czSize = cg.ZSize;
+
+                double dvfOx = dvf.Origin.X, dvfOy = dvf.Origin.Y, dvfOz = dvf.Origin.Z;
+                double dvfXDx = dvf.XDirection.X, dvfXDy = dvf.XDirection.Y, dvfXDz = dvf.XDirection.Z;
+                double dvfYDx = dvf.YDirection.X, dvfYDy = dvf.YDirection.Y, dvfYDz = dvf.YDirection.Z;
+                double dvfZDx = dvf.ZDirection.X, dvfZDy = dvf.ZDirection.Y, dvfZDz = dvf.ZDirection.Z;
+                double invDvfXRes = 1.0 / dvf.XRes, invDvfYRes = 1.0 / dvf.YRes, invDvfZRes = 1.0 / dvf.ZRes;
+
+                for (int py = 0; py < refH; py++)
+                {
+                    int ro = py * refW;
+                    for (int px = 0; px < refW; px++)
+                    {
+                        // World position of reference voxel.
+                        double wx = rg.Ox + sliceIndex * rg.Zx + py * rg.Yx + px * rg.Xx;
+                        double wy = rg.Oy + sliceIndex * rg.Zy + py * rg.Yy + px * rg.Xy;
+                        double wz = rg.Oz + sliceIndex * rg.Zz + py * rg.Yz + px * rg.Xz;
+
+                        double dx = 0, dy = 0, dz = 0;
+                        if (fast)
+                        {
+                            if (px < dvf.XSize && py < dvf.YSize && sliceIndex < dvf.ZSize)
+                            {
+                                var v = dvf.Vectors[sliceIndex][px, py];
+                                dx = v.X; dy = v.Y; dz = v.Z;
+                            }
+                        }
+                        else
+                        {
+                            double dvfDiffX = wx - dvfOx, dvfDiffY = wy - dvfOy, dvfDiffZ = wz - dvfOz;
+                            int dvfIx = (int)Math.Round((dvfDiffX * dvfXDx + dvfDiffY * dvfXDy + dvfDiffZ * dvfXDz) * invDvfXRes);
+                            int dvfIy = (int)Math.Round((dvfDiffX * dvfYDx + dvfDiffY * dvfYDy + dvfDiffZ * dvfYDz) * invDvfYRes);
+                            int dvfIz = (int)Math.Round((dvfDiffX * dvfZDx + dvfDiffY * dvfZDy + dvfDiffZ * dvfZDz) * invDvfZRes);
+                            if (dvfIx >= 0 && dvfIx < dvf.XSize && dvfIy >= 0 && dvfIy < dvf.YSize && dvfIz >= 0 && dvfIz < dvf.ZSize)
+                            {
+                                var v = dvf.Vectors[dvfIz][dvfIx, dvfIy];
+                                dx = v.X; dy = v.Y; dz = v.Z;
+                            }
+                        }
+
+                        double mwx = wx + dx, mwy = wy + dy, mwz = wz + dz;
+
+                        // Moving world -> moving image indices (nearest-neighbor — this is a preview view).
+                        double diffX = mwx - cg.Ox, diffY = mwy - cg.Oy, diffZ = mwz - cg.Oz;
+                        double fz = (diffX * cg.ZDx + diffY * cg.ZDy + diffZ * cg.ZDz) / cg.ZRes;
+                        int iz = (int)Math.Round(fz);
+                        if (iz < 0 || iz >= czSize) continue;
+
+                        int ix = (int)Math.Round((diffX * cg.XDx + diffY * cg.XDy + diffZ * cg.XDz) / cg.XRes);
+                        int iy = (int)Math.Round((diffX * cg.YDx + diffY * cg.YDy + diffZ * cg.YDz) / cg.YRes);
+
+                        if (ix >= 0 && ix < cxSize && iy >= 0 && iy < cySize)
+                            result[ro + px] = cp.CtVoxels[iz][ix, iy] - huOff;
+                    }
+                }
+            }
+            else if (cp.TransformMatrix == null)
             {
                 double baseWx = rg.Ox + sliceIndex * rg.Zx, baseWy = rg.Oy + sliceIndex * rg.Zy, baseWz = rg.Oz + sliceIndex * rg.Zz;
                 double diffX = baseWx - cg.Ox, diffY = baseWy - cg.Oy, diffZ = baseWz - cg.Oz;
@@ -771,19 +898,32 @@ namespace EQD2Viewer.Services
                 };
             }
 
-            // DIR deformation field — preferred over affine when available
-            DeformationField? deformationField = null;
-            if (!entry.IsReference
+            // DIR deformation field — preferred over affine when available.
+            // Priority: in-memory (from live ITK) > path (pre-computed MHA) > null (falls back to affine).
+            DeformationField? deformationField = entry.DeformationField;
+
+            if (deformationField == null
+                && !entry.IsReference
                 && !string.IsNullOrEmpty(entry.DeformationFieldPath)
-                && _dfLoader != null
-                && File.Exists(entry.DeformationFieldPath))
+                && _dfLoader != null)
             {
+                // Loader is responsible for existence / error handling (no file IO in service layer).
                 deformationField = _dfLoader.Load(entry.DeformationFieldPath);
                 if (deformationField != null)
                     SimpleLogger.Info($"Loaded DVF for {entry.DisplayLabel}: {entry.DeformationFieldPath}");
                 else
                     SimpleLogger.Warning($"DVF load failed for {entry.DisplayLabel}, falling back to affine");
             }
+
+            // If DVF grid matches the reference exactly, voxel indices coincide — enables fast path.
+            bool dvfMatchesRef = deformationField != null
+                && deformationField.XSize == _refW
+                && deformationField.YSize == _refH
+                && deformationField.ZSize == _refZ
+                && GeometriesMatch(deformationField, _referenceCtImage);
+
+            if (deformationField != null && !dvfMatchesRef)
+                SimpleLogger.Warning($"DVF for {entry.DisplayLabel}: grid differs from reference CT, using world-coordinate lookup.");
 
             return new CachedPlanData
             {
@@ -802,9 +942,25 @@ namespace EQD2Viewer.Services
                 CtVoxels = ctVoxels,
                 CtGeo = ctGeo,
                 CtHuOffset = ctHuOffset,
-                DeformationField = deformationField
+                DeformationField = deformationField,
+                DvfMatchesRef = dvfMatchesRef
             };
         }
+
+        private static bool GeometriesMatch(DeformationField dvf, VolumeData refVol)
+        {
+            const double tol = 1e-4;
+            return Math.Abs(dvf.XRes - refVol.XRes) < tol
+                && Math.Abs(dvf.YRes - refVol.YRes) < tol
+                && Math.Abs(dvf.ZRes - refVol.ZRes) < tol
+                && Vec3Near(dvf.Origin, refVol.Origin, tol)
+                && Vec3Near(dvf.XDirection, refVol.XDirection, tol)
+                && Vec3Near(dvf.YDirection, refVol.YDirection, tol)
+                && Vec3Near(dvf.ZDirection, refVol.ZDirection, tol);
+        }
+
+        private static bool Vec3Near(Vec3 a, Vec3 b, double tol)
+            => Math.Abs(a.X - b.X) < tol && Math.Abs(a.Y - b.Y) < tol && Math.Abs(a.Z - b.Z) < tol;
 
         public void Dispose()
         {
@@ -826,6 +982,7 @@ namespace EQD2Viewer.Services
             public double EQD2Q, EQD2L; public double[,]? TransformMatrix;
             public int[][,]? CtVoxels; public CachedCtGeometry? CtGeo; public int CtHuOffset;
             public DeformationField? DeformationField;
+            public bool DvfMatchesRef;
         }
     }
 }

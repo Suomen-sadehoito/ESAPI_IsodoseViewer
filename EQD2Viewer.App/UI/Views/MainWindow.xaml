@@ -191,6 +191,27 @@
 					<Border Style="{StaticResource Card}">
 						<StackPanel>
 							<TextBlock Text="ISODOSE LEVELS" Style="{StaticResource SectionHeader}"/>
+
+							<!-- Dmax hotspot strip: live dose maximum + navigate-to-slice button -->
+							<Border Background="#1A1E26" BorderBrush="#2A3040" BorderThickness="1" CornerRadius="4" Padding="10,6" Margin="0,0,0,8"
+                                    Visibility="{Binding HasHotspot, Converter={StaticResource BoolToVis}}">
+								<Grid>
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="*"/>
+										<ColumnDefinition Width="Auto"/>
+									</Grid.ColumnDefinitions>
+									<StackPanel Grid.Column="0">
+										<TextBlock Text="{Binding HotspotLabel}" Foreground="#FF7A4C" FontWeight="SemiBold" FontSize="11"/>
+										<TextBlock Foreground="#5C6475" FontSize="9">
+											<Run Text="pixel ("/><Run Text="{Binding HotspotPixelX, Mode=OneWay}"/><Run Text=", "/><Run Text="{Binding HotspotPixelY, Mode=OneWay}"/><Run Text=")"/>
+										</TextBlock>
+									</StackPanel>
+									<Button Grid.Column="1" Content="Go to hotspot" Style="{StaticResource Btn}" FontSize="10"
+                                            Command="{Binding JumpToHotspotCommand}"
+                                            ToolTip="Navigate to the slice that contains the maximum dose voxel."/>
+								</Grid>
+							</Border>
+
 							<StackPanel Orientation="Horizontal" Margin="0,0,0,6">
 								<TextBlock Text="Mode" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="10"/>
 								<RadioButton Content="Relative (%)" Style="{StaticResource RadioPill}" IsChecked="{Binding IsRelativeMode}" GroupName="IsodoseMode" FontSize="10"
@@ -203,30 +224,44 @@
 								<RadioButton Content="%" Style="{StaticResource RadioPill}" IsChecked="{Binding IsPercentMode}" GroupName="IsodoseUnit" FontSize="10"/>
 								<RadioButton Content="Gy" Style="{StaticResource RadioPill}" IsChecked="{Binding IsGyMode}" GroupName="IsodoseUnit" FontSize="10" Margin="0"/>
 							</StackPanel>
-							<StackPanel Orientation="Horizontal" Margin="0,0,0,4" Visibility="{Binding IsRelativeModeSettingsVisible, Converter={StaticResource BoolToVis}}">
+							<WrapPanel Margin="0,0,0,4" Visibility="{Binding IsRelativeModeSettingsVisible, Converter={StaticResource BoolToVis}}">
 								<Button Content="Eclipse (10)" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Eclipse"/>
 								<Button Content="Default (4)" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Default"/>
 								<Button Content="Minimal (3)" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Minimal"/>
-							</StackPanel>
-							<StackPanel Orientation="Horizontal" Margin="0,0,0,4" Visibility="{Binding IsAbsoluteMode, Converter={StaticResource BoolToVis}}">
+							</WrapPanel>
+							<WrapPanel Margin="0,0,0,4" Visibility="{Binding IsAbsoluteMode, Converter={StaticResource BoolToVis}}">
 								<Button Content="Re-irradiation" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="ReIrradiation"
                                         ToolTip="OAR tolerances: 45 Gy cord, 50 Gy brainstem, 60 Gy critical"/>
 								<Button Content="Stereotactic" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Stereotactic"
                                         ToolTip="SBRT/SRS dose range up to 80 Gy"/>
 								<Button Content="Palliative" Style="{StaticResource Btn}" FontSize="9" Command="{Binding LoadIsodosePresetCommand}" CommandParameter="Palliative"
                                         ToolTip="Lower dose range for palliative retreatment"/>
-							</StackPanel>
-							<DataGrid MaxHeight="260" ItemsSource="{Binding IsodoseLevels}" Style="{StaticResource DarkGrid}" AutoGenerateColumns="False" CanUserDeleteRows="False" x:Name="IsodoseLevelGrid">
+								<Button Content="Auto from Dmax" Style="{StaticResource Btn}" FontSize="9" FontWeight="SemiBold"
+                                        Command="{Binding LoadIsodosePresetCommand}" CommandParameter="AutoFromDmax"
+                                        ToolTip="Generate 10%…95% levels scaled to the current Dmax. Best when summation doses reach 100+ Gy and static tolerance presets miss the peak."/>
+							</WrapPanel>
+
+							<DataGrid MaxHeight="280" ItemsSource="{Binding IsodoseLevels}" Style="{StaticResource DarkGrid}"
+                                      AutoGenerateColumns="False" CanUserDeleteRows="False"
+                                      HeadersVisibility="Column" x:Name="IsodoseLevelGrid">
 								<DataGrid.ColumnHeaderStyle>
 									<Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}"/>
 								</DataGrid.ColumnHeaderStyle>
 								<DataGrid.Columns>
-									<DataGridCheckBoxColumn Header="On" Width="32" Binding="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"/>
+									<DataGridCheckBoxColumn Header="On" Width="30" Binding="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"/>
+
 									<DataGridTemplateColumn Header="Color" Width="38">
 										<DataGridTemplateColumn.CellTemplate>
 											<DataTemplate>
-												<Rectangle Width="22" Height="12" RadiusX="2" RadiusY="2" Cursor="Hand" MouseLeftButtonDown="ColorSwatch_Click"
-                                                           ToolTip="Click to cycle color">
+												<Rectangle Width="22" Height="12" RadiusX="2" RadiusY="2" Cursor="Hand"
+                                                           MouseLeftButtonDown="ColorSwatch_Click"
+                                                           ToolTip="Left-click: cycle through palette. Right-click: choose any color.">
+													<Rectangle.ContextMenu>
+														<ContextMenu>
+															<MenuItem Header="Pick color…" Click="ColorSwatch_PickCustom"/>
+															<MenuItem Header="Reset to default" Click="ColorSwatch_ResetDefault"/>
+														</ContextMenu>
+													</Rectangle.ContextMenu>
 													<Rectangle.Fill>
 														<SolidColorBrush Color="{Binding MediaColor}"/>
 													</Rectangle.Fill>
@@ -234,38 +269,102 @@
 											</DataTemplate>
 										</DataGridTemplateColumn.CellTemplate>
 									</DataGridTemplateColumn>
-									<DataGridTextColumn Header="Level" Width="65" Binding="{Binding Label}" IsReadOnly="True">
+
+									<!-- Editable threshold: Gy in Absolute mode, % in Relative mode. -->
+									<DataGridTemplateColumn Header="Threshold" Width="78">
+										<DataGridTemplateColumn.CellTemplate>
+											<DataTemplate>
+												<Grid>
+													<!-- Relative mode: edit Fraction × 100 -->
+													<TextBox Foreground="#F0F2F5" Background="Transparent" BorderThickness="0" FontSize="11"
+                                                             Padding="2,0" VerticalContentAlignment="Center"
+                                                             Text="{Binding Fraction, StringFormat=F3, UpdateSourceTrigger=LostFocus}"
+                                                             LostFocus="IsodoseValue_LostFocus"
+                                                             KeyDown="IsodoseValue_KeyDown"
+                                                             ToolTip="Edit fraction of reference dose (0.5 = 50%). Press Enter to commit.">
+														<TextBox.Style>
+															<Style TargetType="TextBox">
+																<Setter Property="Visibility" Value="Visible"/>
+																<Style.Triggers>
+																	<DataTrigger Binding="{Binding DataContext.IsAbsoluteMode, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="True">
+																		<Setter Property="Visibility" Value="Collapsed"/>
+																	</DataTrigger>
+																</Style.Triggers>
+															</Style>
+														</TextBox.Style>
+													</TextBox>
+													<!-- Absolute mode: edit AbsoluteDoseGy -->
+													<TextBox Foreground="#F0F2F5" Background="Transparent" BorderThickness="0" FontSize="11"
+                                                             Padding="2,0" VerticalContentAlignment="Center"
+                                                             Text="{Binding AbsoluteDoseGy, StringFormat=F1, UpdateSourceTrigger=LostFocus}"
+                                                             LostFocus="IsodoseValue_LostFocus"
+                                                             KeyDown="IsodoseValue_KeyDown"
+                                                             ToolTip="Edit absolute dose in Gy. Press Enter to commit.">
+														<TextBox.Style>
+															<Style TargetType="TextBox">
+																<Setter Property="Visibility" Value="Collapsed"/>
+																<Style.Triggers>
+																	<DataTrigger Binding="{Binding DataContext.IsAbsoluteMode, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="True">
+																		<Setter Property="Visibility" Value="Visible"/>
+																	</DataTrigger>
+																</Style.Triggers>
+															</Style>
+														</TextBox.Style>
+													</TextBox>
+												</Grid>
+											</DataTemplate>
+										</DataGridTemplateColumn.CellTemplate>
+									</DataGridTemplateColumn>
+
+									<!-- Unit suffix (Gy or % Gy equivalent) -->
+									<DataGridTextColumn Header="Label" Width="55" Binding="{Binding Label}" IsReadOnly="True">
 										<DataGridTextColumn.ElementStyle>
 											<Style TargetType="TextBlock">
-												<Setter Property="Foreground" Value="#F0F2F5"/>
+												<Setter Property="Foreground" Value="#9BA3B0"/>
+												<Setter Property="FontSize" Value="10"/>
 											</Style>
 										</DataGridTextColumn.ElementStyle>
 									</DataGridTextColumn>
-									<DataGridTemplateColumn Header="Value" Width="55">
+
+									<!-- Alpha (opacity) slider - important for Fill/Colorwash mode -->
+									<DataGridTemplateColumn Header="Opacity" Width="70">
 										<DataGridTemplateColumn.CellTemplate>
 											<DataTemplate>
-												<TextBlock Foreground="#5C6475" FontSize="11">
-													<TextBlock.Style>
-														<Style TargetType="TextBlock">
-															<Setter Property="Text" Value="{Binding Fraction, StringFormat=F3}"/>
-															<Style.Triggers>
-																<DataTrigger Binding="{Binding DataContext.IsAbsoluteMode, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="True">
-																	<Setter Property="Text" Value="{Binding AbsoluteDoseGy, StringFormat=F1}"/>
-																</DataTrigger>
-															</Style.Triggers>
-														</Style>
-													</TextBlock.Style>
-												</TextBlock>
+												<Slider Minimum="0" Maximum="255" Value="{Binding Alpha, UpdateSourceTrigger=PropertyChanged}"
+                                                        TickFrequency="16" IsSnapToTickEnabled="False" Padding="0" Margin="4,0"
+                                                        VerticalAlignment="Center"
+                                                        ToolTip="Fill-mode opacity (Line mode always renders fully opaque)."/>
+											</DataTemplate>
+										</DataGridTemplateColumn.CellTemplate>
+									</DataGridTemplateColumn>
+
+									<!-- Row action: solo (isolate) + delete -->
+									<DataGridTemplateColumn Header="" Width="42">
+										<DataGridTemplateColumn.CellTemplate>
+											<DataTemplate>
+												<StackPanel Orientation="Horizontal">
+													<Button Content="⌾" FontSize="10" Width="18" Height="18" Padding="0" Margin="0,0,2,0"
+                                                            Background="#1A2A3A" Foreground="#9BA3B0" BorderBrush="#2A3A5A" Cursor="Hand"
+                                                            Click="IsodoseSolo_Click"
+                                                            ToolTip="Solo: show only this level, hide the rest."/>
+													<Button Content="✕" FontSize="10" Width="18" Height="18" Padding="0"
+                                                            Background="#3A1A1A" Foreground="#FF8A8A" BorderBrush="#5A2A2A" Cursor="Hand"
+                                                            Click="IsodoseDelete_Click"
+                                                            ToolTip="Remove this isodose level."/>
+												</StackPanel>
 											</DataTemplate>
 										</DataGridTemplateColumn.CellTemplate>
 									</DataGridTemplateColumn>
 								</DataGrid.Columns>
 							</DataGrid>
-							<StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-								<Button Content="+ Add" Style="{StaticResource Btn}" FontSize="10" Command="{Binding AddIsodoseLevelCommand}"/>
+							<WrapPanel Margin="0,6,0,0">
+								<Button Content="+ Add" Style="{StaticResource Btn}" FontSize="10" Command="{Binding AddIsodoseLevelCommand}"
+                                        ToolTip="Add a new isodose level (will sort into the list by threshold)."/>
 								<Button Content="Show all" Style="{StaticResource Btn}" FontSize="10" Command="{Binding ToggleAllIsodoseCommand}" CommandParameter="True"/>
 								<Button Content="Hide all" Style="{StaticResource Btn}" FontSize="10" Command="{Binding ToggleAllIsodoseCommand}" CommandParameter="False"/>
-							</StackPanel>
+								<Button Content="Sort" Style="{StaticResource Btn}" FontSize="10" Command="{Binding SortIsodoseLevelsCommand}"
+                                        ToolTip="Re-sort levels by threshold, highest first."/>
+							</WrapPanel>
 						</StackPanel>
 					</Border>
 
@@ -308,7 +407,7 @@
 								</TextBlock>
 							</Grid>
 							<Slider Minimum="0.5" Maximum="20" Value="{Binding DisplayAlphaBeta}" TickFrequency="0.5" IsSnapToTickEnabled="True" Style="{StaticResource Slider}"
-                                    ToolTip="α/β for isodose lines/colorwash. Moving this does NOT re-run summation — only updates the display."/>
+                                    ToolTip="α/β for isodose visualization. When a summation is active, dragging this re-computes the EQD2 display sum so isodoses, reference dose and the summation label update live."/>
 
 							<!-- α/β preset buttons -->
 							<StackPanel Orientation="Horizontal" Margin="0,2,0,4">

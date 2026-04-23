@@ -1,6 +1,6 @@
 using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Logging;
-using EQD2Viewer.Registration.Interfaces;
 using EQD2Viewer.Registration.ITK.Converters;
 using itk.simple;
 using System;
@@ -94,11 +94,12 @@ namespace EQD2Viewer.Registration.ITK.Services
                     sp[2] * (sz[2] - 1.0)
                 }));
 
-                var composite = new CompositeTransform(3);
-                composite.AddTransform(affineTx);
-                composite.AddTransform(bsplineTx);
-
-                reg.SetInitialTransform(composite, inPlace: true);
+                // Apply affine as a fixed "moving-initial" transform so only the B-spline
+                // parameters are optimized in phase 2. This is SimpleITK's idiomatic equivalent
+                // of ITK's SetOnlyMostRecentTransformToOptimizeOn and preserves the affine
+                // pre-alignment exactly.
+                reg.SetMovingInitialTransform(affineTx);
+                reg.SetInitialTransform(bsplineTx, inPlace: true);
                 reg.SetOptimizerAsLBFGSB(
                     gradientConvergenceTolerance: 1e-5,
                     numberOfIterations: 50,
@@ -107,15 +108,20 @@ namespace EQD2Viewer.Registration.ITK.Services
                     costFunctionConvergenceFactor: 1e7);
 
                 ct.ThrowIfCancellationRequested();
-                var finalTx = reg.Execute(fixedF, movingF);
+                var finalBsplineTx = reg.Execute(fixedF, movingF);
                 progress?.Report(85);
+
+                // Compose affine+bspline for displacement-field generation on the fixed grid.
+                var composite = new CompositeTransform(3);
+                composite.AddTransform(affineTx);
+                composite.AddTransform(finalBsplineTx);
 
                 // -- Convert to displacement field --
                 ct.ThrowIfCancellationRequested();
                 var dvfFilter = new TransformToDisplacementFieldFilter();
                 dvfFilter.SetReferenceImage(fixedF);
                 dvfFilter.SetOutputPixelType(PixelIDValueEnum.sitkVectorFloat64);
-                using var dvfImage = dvfFilter.Execute(finalTx);
+                using var dvfImage = dvfFilter.Execute(composite);
 
                 var field = ItkImageConverter.DisplacementImageToField(dvfImage, fixed_);
                 progress?.Report(100);

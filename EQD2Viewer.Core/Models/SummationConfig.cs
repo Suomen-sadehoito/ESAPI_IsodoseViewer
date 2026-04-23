@@ -30,6 +30,12 @@ namespace EQD2Viewer.Core.Models
         /// When set, DIR-based voxel mapping is used instead of the affine RegistrationId.
         /// </summary>
         public string DeformationFieldPath { get; set; } = "";
+
+        /// <summary>
+        /// Optional in-memory deformation field. 
+        /// Overrides both RegistrationId and DeformationFieldPath if set.
+        /// </summary>
+        public Data.DeformationField? DeformationField { get; set; }
     }
 
     public enum SummationMethod

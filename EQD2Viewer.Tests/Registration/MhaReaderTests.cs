@@ -84,8 +84,8 @@ namespace EQD2Viewer.Tests.Registration
         [Fact]
         public void ReadDeformationField_VectorValues_ParsedCorrectly()
         {
-            const int xSize = 1, ySize = 1, zSize = 1;
-            var payload = new byte[12];
+            const int xSize = 1, ySize = 1, zSize = 1, ch = 3;
+            var payload = new byte[xSize * ySize * zSize * ch * 4];
             BitConverter.GetBytes(5.5f).CopyTo(payload, 0);
             BitConverter.GetBytes(-3.0f).CopyTo(payload, 4);
             BitConverter.GetBytes(7.25f).CopyTo(payload, 8);

@@ -7,6 +7,9 @@
     <RootNamespace>EQD2Viewer.App</RootNamespace>
     <AssemblyName>EQD2Viewer.App</AssemblyName>
     <UseWPF>true</UseWPF>
+    <!-- Enables System.Windows.Forms.ColorDialog in the isodose color picker.
+         Keeps us off a heavy 3rd-party color-picker package. -->
+    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
@@ -35,5 +38,11 @@
   <ItemGroup>
     <Folder Include="Properties\" />
   </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-WithITK|x64'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
 
 </Project>

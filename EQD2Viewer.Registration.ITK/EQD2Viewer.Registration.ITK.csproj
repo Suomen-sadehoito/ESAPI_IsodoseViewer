@@ -14,13 +14,37 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="SimpleITK" Version="2.3.0" />
+  <PropertyGroup>
+    <SimpleItkLibPath>$(MSBuildThisFileDirectory)..\lib\SimpleITK\</SimpleItkLibPath>
+    <HasSimpleITK>false</HasSimpleITK>
+    <HasSimpleITK Condition="Exists('$(SimpleItkLibPath)SimpleITKCSharpManaged.dll')">true</HasSimpleITK>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(HasSimpleITK)' == 'true'">
+    <!-- Managed wrapper: referenced + copied by MSBuild as Private reference -->
+    <Reference Include="SimpleITKCSharpManaged">
+      <HintPath>$(SimpleItkLibPath)SimpleITKCSharpManaged.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <!-- Native C++ wrappers: copied to output with their original filenames.
+         Name varies between SimpleITK versions (SimpleITKCSharp.dll, SimpleITKCSharpNative.dll),
+         so copy everything in lib\SimpleITK\ except the managed wrapper. -->
+    <None Include="$(SimpleItkLibPath)*.dll"
+          Exclude="$(SimpleItkLibPath)SimpleITKCSharpManaged.dll">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\EQD2Viewer.Core\EQD2Viewer.Core.csproj" />
     <ProjectReference Include="..\EQD2Viewer.Registration\EQD2Viewer.Registration.csproj" />
   </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-WithITK|x64'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
 
 </Project>

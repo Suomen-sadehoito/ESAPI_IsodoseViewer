@@ -1,8 +1,8 @@
-name: Unit Tests
+name: Build & Test
 
 on:
   push:
-    branches: [ master, main, develop, feature/standalone-devrunner ]
+    branches: [ master, main, develop, feature/** ]
   pull_request:
     branches: [ master, main ]
 
@@ -10,42 +10,286 @@ permissions:
   contents: read
   actions: read
   checks: write
+  pull-requests: write
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  SIMPLEITK_VERSION: '2.5.3'
+  SIMPLEITK_URL: 'https://github.com/SimpleITK/SimpleITK/releases/download/v2.5.3/SimpleITK-2.5.3-CSharp-win64-x64.zip'
 
 jobs:
-  test:
+  # ──────────────────────────────────────────────────────────────────────
+  # Job 1: core build + unit tests (Debug + Release matrix, no SimpleITK)
+  # ──────────────────────────────────────────────────────────────────────
+  build-and-test:
+    name: ${{ matrix.configuration }} / ${{ matrix.platform }}
+    runs-on: windows-latest
+    env:
+      CI: true
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - configuration: Debug
+            platform: Any CPU
+            run_tests: true
+            upload_coverage: true
+          - configuration: Release
+            platform: x64
+            run_tests: true
+            upload_coverage: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore NuGet packages
+        run: nuget restore EQD2Viewer.sln
+
+      - name: Build solution (${{ matrix.configuration }} / ${{ matrix.platform }})
+        run: |
+          msbuild EQD2Viewer.sln `
+            /p:Configuration="${{ matrix.configuration }}" `
+            /p:Platform="${{ matrix.platform }}" `
+            /t:Build `
+            /verbosity:minimal `
+            /fl `
+            /flp:"logfile=build.log;verbosity=normal;encoding=UTF-8" `
+            /nologo
+
+      - name: Summarize warnings
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path build.log) {
+            $warnings = Select-String -Path build.log -Pattern '\bwarning\s+[A-Z]{2}[0-9]+' -AllMatches
+            $count = ($warnings | Measure-Object).Count
+            "### Build warnings (${{ matrix.configuration }}): $count" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            if ($count -gt 0) {
+              "" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+              '```' | Out-File -Append $env:GITHUB_STEP_SUMMARY
+              $warnings | ForEach-Object { $_.Line } | Select-Object -First 30 | Out-File -Append $env:GITHUB_STEP_SUMMARY
+              '```' | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            }
+          }
+
+      - name: Run unit + integration + smoke tests
+        if: matrix.run_tests
+        run: |
+          dotnet test EQD2Viewer.Tests\EQD2Viewer.Tests.csproj `
+            --no-build `
+            --configuration ${{ matrix.configuration }} `
+            --logger "trx;LogFileName=test-results.trx" `
+            --logger "console;verbosity=normal" `
+            --results-directory TestResults `
+            --collect:"XPlat Code Coverage" `
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always() && matrix.run_tests
+        with:
+          name: Tests (${{ matrix.configuration }})
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+
+      - name: Upload coverage artifact
+        if: matrix.upload_coverage && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.configuration }}
+          path: TestResults/**/coverage.cobertura.xml
+          retention-days: 14
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ matrix.configuration }}
+          path: build.log
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Job 2: Release-WithITK build + live ITK tests (requires SimpleITK)
+  # ──────────────────────────────────────────────────────────────────────
+  build-with-itk:
+    name: Release-WithITK / x64 (live DIR)
     runs-on: windows-latest
     env:
       CI: true
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
 
-    - name: Setup NuGet
-      uses: NuGet/setup-nuget@v2
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
 
-    - name: Restore NuGet packages
-      run: nuget restore EQD2Viewer.sln
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-    - name: Build solution
-      run: msbuild EQD2Viewer.sln /p:Configuration=Debug /p:Platform="Any CPU" /t:Build /verbosity:minimal
+      - name: Cache SimpleITK binaries
+        id: cache-simpleitk
+        uses: actions/cache@v4
+        with:
+          path: lib/SimpleITK
+          key: simpleitk-${{ env.SIMPLEITK_VERSION }}-win-x64-v1
 
-    - name: Setup .NET SDK
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Download & extract SimpleITK
+        if: steps.cache-simpleitk.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path lib\SimpleITK | Out-Null
+          $zip = "simpleitk.zip"
+          Write-Host "Downloading $env:SIMPLEITK_URL..."
+          Invoke-WebRequest -Uri $env:SIMPLEITK_URL -OutFile $zip -UseBasicParsing
+          Write-Host "Extracting..."
+          Expand-Archive -Path $zip -DestinationPath simpleitk_extracted -Force
+          # Flatten: copy all .dll files into lib/SimpleITK/
+          Get-ChildItem -Path simpleitk_extracted -Recurse -Filter *.dll | ForEach-Object {
+            Copy-Item $_.FullName -Destination lib\SimpleITK\
+          }
+          Write-Host "Deployed DLLs:"
+          Get-ChildItem lib\SimpleITK -Filter *.dll | Select-Object Name, Length
 
-    - name: Run unit tests and integration tests
-      run: |
-        dotnet test EQD2Viewer.Tests\EQD2Viewer.Tests.csproj --no-build --configuration Debug --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+      - name: Verify SimpleITK deployment
+        shell: pwsh
+        run: |
+          $managed = "lib\SimpleITK\SimpleITKCSharpManaged.dll"
+          $native  = "lib\SimpleITK\SimpleITKCSharpNative.dll"
+          if (-not (Test-Path $managed)) { throw "Missing $managed" }
+          if (-not (Test-Path $native))  { throw "Missing $native" }
+          Write-Host "SimpleITK OK: managed $((Get-Item $managed).Length) B, native $((Get-Item $native).Length) B"
 
-    - name: Publish test results
-      uses: dorny/test-reporter@v1
-      if: always()
-      with:
-        name: Test Results (Unit + Integration)
-        path: TestResults/*.trx
-        reporter: dotnet-trx
+      - name: Restore NuGet packages
+        run: nuget restore EQD2Viewer.sln
+
+      - name: Build solution (Release-WithITK / x64)
+        run: |
+          msbuild EQD2Viewer.sln `
+            /p:Configuration=Release-WithITK `
+            /p:Platform=x64 `
+            /t:Build `
+            /verbosity:minimal `
+            /fl `
+            /flp:"logfile=build-withitk.log;verbosity=normal;encoding=UTF-8" `
+            /nologo
+
+      - name: Summarize warnings (Release-WithITK)
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path build-withitk.log) {
+            $warnings = Select-String -Path build-withitk.log -Pattern '\bwarning\s+[A-Z]{2}[0-9]+' -AllMatches
+            $count = ($warnings | Measure-Object).Count
+            "### Build warnings (Release-WithITK): $count" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            if ($count -gt 0) {
+              '```' | Out-File -Append $env:GITHUB_STEP_SUMMARY
+              $warnings | ForEach-Object { $_.Line } | Select-Object -First 30 | Out-File -Append $env:GITHUB_STEP_SUMMARY
+              '```' | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            }
+          }
+
+      - name: Copy SimpleITK DLLs next to test output (for live DIR tests)
+        shell: pwsh
+        run: |
+          $testOut = "BuildOutput\Release-WithITK"
+          if (Test-Path $testOut) {
+            Copy-Item lib\SimpleITK\*.dll -Destination $testOut -Force
+            Write-Host "Copied SimpleITK DLLs to $testOut"
+          }
+
+      - name: Run tests (including live DIR)
+        run: |
+          dotnet test EQD2Viewer.Tests\EQD2Viewer.Tests.csproj `
+            --no-build `
+            --configuration Release-WithITK `
+            --logger "trx;LogFileName=test-results-withitk.trx" `
+            --logger "console;verbosity=normal" `
+            --results-directory TestResults
+
+      - name: Publish test results (Release-WithITK)
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Tests (Release-WithITK)
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+
+      - name: Upload deployed ITK bundle
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eclipse-deployable-with-itk
+          path: BuildOutput/02_Eclipse_With_ITK/
+          retention-days: 14
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-withitk
+          path: build-withitk.log
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Job 3: aggregate coverage report (from Debug run)
+  # ──────────────────────────────────────────────────────────────────────
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: always()
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-Debug
+          path: coverage
+        continue-on-error: true
+
+      - name: Generate coverage summary
+        if: always()
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage/**/coverage.cobertura.xml
+          badge: true
+          fail_below_min: false
+          format: markdown
+          hide_branch_rate: false
+          hide_complexity: true
+          indicators: true
+          output: both
+          thresholds: '60 80'
+        continue-on-error: true
+
+      - name: Add coverage to summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f code-coverage-results.md ]; then
+            echo "## Code coverage" >> $GITHUB_STEP_SUMMARY
+            cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+          fi

@@ -38,6 +38,12 @@ namespace EQD2Viewer.Core.Interfaces
         /// Returns empty string if not found.
         /// </summary>
         string GetPlanImageFOR(string courseId, string planId);
+
+        /// <summary>
+        /// Loads the full CT volume for a specific plan.
+        /// Used for deformable image registration (DIR).
+        /// </summary>
+        VolumeData? LoadCtVolume(string courseId, string planId);
     }
 
     /// <summary>

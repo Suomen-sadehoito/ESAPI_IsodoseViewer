@@ -60,7 +60,8 @@ namespace EQD2Viewer.App
                 debugService,
                 dvhService,
                 summationLoader,
-                factory);
+                factory,
+                itkService);
 
             var window = new MainWindow(viewModel);
             if (!string.IsNullOrEmpty(windowTitle))
@@ -77,7 +78,7 @@ namespace EQD2Viewer.App
         /// attempts to instantiate ItkRegistrationService via reflection.
         /// Returns null silently if the assembly is absent (standard Release build).
         /// </summary>
-        private static Registration.Interfaces.IRegistrationService? TryLoadItkService()
+        private static IRegistrationService? TryLoadItkService()
         {
             try
             {
@@ -90,7 +91,7 @@ namespace EQD2Viewer.App
                 if (type == null) return null;
 
                 var instance = Activator.CreateInstance(type);
-                return instance as Registration.Interfaces.IRegistrationService;
+                return instance as IRegistrationService;
             }
             catch (Exception ex)
             {

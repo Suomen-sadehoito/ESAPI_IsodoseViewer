@@ -158,6 +158,60 @@ namespace EQD2Viewer.App.UI.ViewModels
 
         public string SummationAlphaBetaLabel { get => _doseOverlay.SummationAlphaBetaLabel; set => _doseOverlay.SummationAlphaBetaLabel = value; }
 
+        // ════════════════════════════════════════════════════════
+        // DOSE HOTSPOT (max dose location — navigable via "Jump to hotspot")
+        // ════════════════════════════════════════════════════════
+
+        private double _hotspotDoseGy;
+        private int _hotspotSliceZ = -1;
+        private int _hotspotPixelX;
+        private int _hotspotPixelY;
+
+        /// <summary>The absolute dose value at the hotspot, in Gy. 0 if no dose loaded.</summary>
+        public double HotspotDoseGy
+        {
+            get => _hotspotDoseGy;
+            private set
+            {
+                if (SetProperty(ref _hotspotDoseGy, value))
+                {
+                    OnPropertyChanged(nameof(HotspotLabel));
+                    OnPropertyChanged(nameof(HasHotspot));
+                }
+            }
+        }
+
+        /// <summary>CT slice index where the hotspot lies.</summary>
+        public int HotspotSliceZ
+        {
+            get => _hotspotSliceZ;
+            private set
+            {
+                if (SetProperty(ref _hotspotSliceZ, value))
+                    OnPropertyChanged(nameof(HotspotLabel));
+            }
+        }
+
+        public int HotspotPixelX { get => _hotspotPixelX; private set => SetProperty(ref _hotspotPixelX, value); }
+        public int HotspotPixelY { get => _hotspotPixelY; private set => SetProperty(ref _hotspotPixelY, value); }
+
+        public bool HasHotspot => _hotspotSliceZ >= 0 && _hotspotDoseGy > 0;
+
+        /// <summary>Compact human-readable label: "Dmax: 56.3 Gy @ slice 118".</summary>
+        public string HotspotLabel => HasHotspot
+            ? $"Dmax: {_hotspotDoseGy:F2} Gy @ slice {_hotspotSliceZ}"
+            : "Dmax: (not computed)";
+
+        internal void SetHotspot(double gy, int z, int x, int y)
+        {
+            HotspotDoseGy = gy;
+            HotspotSliceZ = z;
+            HotspotPixelX = x;
+            HotspotPixelY = y;
+        }
+
+        internal void ClearHotspot() => SetHotspot(0, -1, 0, 0);
+
         private EQD2MeanMethod _meanMethod = EQD2MeanMethod.Simple;
         public EQD2MeanMethod MeanMethod
         {

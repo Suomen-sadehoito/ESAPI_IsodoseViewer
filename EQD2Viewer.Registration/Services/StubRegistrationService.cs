@@ -1,5 +1,5 @@
 using EQD2Viewer.Core.Data;
-using EQD2Viewer.Registration.Interfaces;
+using EQD2Viewer.Core.Interfaces;
 using System;
 using System.Threading;
 using System.Threading.Tasks;

@@ -52,6 +52,11 @@ namespace EQD2Viewer.App.UI.ViewModels
         /// </summary>
         internal readonly ISummationServiceFactory? _summationServiceFactory;
 
+        /// <summary>
+        /// Service for performing image registration.
+        /// </summary>
+        internal readonly IRegistrationService? _registrationService;
+
         // == Child ViewModels (decomposed responsibilities) ==
         internal readonly ViewModelEventBus _eventBus = new ViewModelEventBus();
         internal readonly DoseOverlayViewModel _doseOverlay;
@@ -68,7 +73,8 @@ namespace EQD2Viewer.App.UI.ViewModels
             IDebugExportService debugExportService,
           IDVHCalculation dvhService,
     ISummationDataLoader? summationDataLoader = null,
-   ISummationServiceFactory? summationServiceFactory = null)
+   ISummationServiceFactory? summationServiceFactory = null,
+   IRegistrationService? registrationService = null)
         {
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _renderingService = renderingService ?? throw new ArgumentNullException(nameof(renderingService));
@@ -76,6 +82,7 @@ namespace EQD2Viewer.App.UI.ViewModels
             _dvhService = dvhService ?? throw new ArgumentNullException(nameof(dvhService));
             _summationDataLoader = summationDataLoader;
             _summationServiceFactory = summationServiceFactory;
+            _registrationService = registrationService;
 
             // == Initialize child ViewModels ==
             double prescGy = snapshot.ActivePlan?.TotalDoseGy ?? 0;
@@ -115,6 +122,7 @@ namespace EQD2Viewer.App.UI.ViewModels
             InitializePlotModel();
             _doseOverlay.LoadPreset("Eclipse");
             AutoPreset();
+            ComputeSinglePlanHotspot();
         }
 
         private void WireIsodoseLevelEvents()

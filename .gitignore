@@ -427,10 +427,13 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
-# ESAPI DLLs � proprietary Varian files, never commit
-lib/*.dll
-!lib/.gitkeep
- 
+# Proprietary / downloaded third-party DLLs� proprietary Varian files, never commit
+# lib/ESAPI/     -- Varian ESAPI (copy from Eclipse installation)
+# lib/SimpleITK/ -- SimpleITK C# binaries (download from GitHub releases)
+lib/**/*.dll
+lib/**/*.pdb
+!lib/**/.gitkeep
+
 # Test results
 TestResults/
 *.trx
@@ -439,11 +442,26 @@ TestResults/
 # These are scratch files produced by terminal commands during AI-assisted sessions
 # and must never be committed to the repository.
 build_*.txt
+build_*.log
 warnings_*.txt
 *_warnings*.txt
 *_warnings.txt
 remaining_warnings.txt
 unique_warnings.txt
+test_*.log
+
+# Claude Code and other AI-assistant local state
+.claude/
+.cursor/
+.aider*
 
 # Custom build output directory from Directory.Build.props
 BuildOutput/
+
+# Costura.Fody temporary file-extraction artifacts
+costura/
+costura-*
+
+# Runtime logs emitted by DevRunner / ESAPI script
+EQD2Viewer_Dev.log
+EQD2Viewer_*.log

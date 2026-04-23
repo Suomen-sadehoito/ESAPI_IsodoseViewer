@@ -30,7 +30,7 @@ namespace EQD2Viewer.Core.Interfaces
         /// Phase 2: Heavy voxel computation. Runs on ANY thread (no ESAPI calls).
         /// Stores per-plan physical dose AND computes EQD2 display sum.
         /// </summary>
-        Task<SummationResult> ComputeAsync(IProgress<int> progress, CancellationToken ct);
+        Task<SummationResult> ComputeAsync(IProgress<int>? progress, CancellationToken ct);
 
         /// <summary>
         /// Recomputes the EQD2 display sum from stored per-plan physical doses.
@@ -38,7 +38,7 @@ namespace EQD2Viewer.Core.Interfaces
         /// Called when the user changes the display alpha/beta slider.
         /// </summary>
         Task<SummationResult> RecomputeEQD2DisplayAsync(double displayAlphaBeta,
-     IProgress<int> progress, CancellationToken ct);
+     IProgress<int>? progress, CancellationToken ct);
 
         /// <summary>
         /// Computes a cumulative DVH for a specific structure using that structure's own alpha/beta.
@@ -76,5 +76,11 @@ namespace EQD2Viewer.Core.Interfaces
         public double MaxDoseGy { get; set; }
         public double TotalReferenceDoseGy { get; set; }
         public int SliceCount { get; set; }
+
+        /// <summary>Voxel index (on the reference CT grid) where MaxDoseGy was found.
+        /// Used by the UI to jump to the hotspot slice.</summary>
+        public int MaxDoseSliceZ { get; set; }
+        public int MaxDosePixelX { get; set; }
+        public int MaxDosePixelY { get; set; }
     }
 }

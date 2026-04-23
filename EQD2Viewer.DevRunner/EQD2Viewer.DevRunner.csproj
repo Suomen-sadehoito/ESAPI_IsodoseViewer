@@ -32,4 +32,10 @@
 	</ItemGroup>
 
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-WithITK|x64'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
 </Project>

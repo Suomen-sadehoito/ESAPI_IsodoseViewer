@@ -57,7 +57,9 @@ namespace EQD2Viewer.App.UI.ViewModels
             var dialog = new PlanSummationDialog(
                 _snapshot.AllCourses,
                 _snapshot.Registrations,
-                _snapshot.ActivePlan);
+                _snapshot.ActivePlan,
+                _registrationService,
+                _summationDataLoader);
             dialog.Owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive);
             if (dialog.ShowDialog() == true && dialog.ResultConfig != null)
                 await ExecuteSummationAsync(dialog.ResultConfig);
@@ -78,11 +80,16 @@ namespace EQD2Viewer.App.UI.ViewModels
             _summationService?.Dispose();
             _summationService = null;
             _activeSummationConfig = null;
+            _lastMaxDoseGy = 0;
+            _lastRefDoseGy = 0;
             IsSummationActive = false;
             IsSummationComputing = false;
             SummationProgress = 0;
             SummationInfo = "No summation active";
             _doseOverlay.SummationAlphaBetaLabel = "";
+            // Hotspot is still valid for single-plan mode — recompute from snapshot dose
+            // so the button keeps working after clearing the summation.
+            ComputeSinglePlanHotspot();
             CurrentOverlayMode = OverlayMode.Off;
             OverlayPlanOptions.Clear();
             ClearSummationDVH();
@@ -124,12 +131,10 @@ namespace EQD2Viewer.App.UI.ViewModels
                     _activeSummationConfig = config;
                     IsSummationActive = true;
 
-                    string ml = config.Method == SummationMethod.EQD2 ? "EQD2" : "Physical";
-                    SummationInfo = $"{ml} sum: {config.Plans.Count} plans | Max: {result.MaxDoseGy:F2} Gy | Ref: {result.TotalReferenceDoseGy:F2} Gy";
-                    StatusText = result.StatusMessage;
-
                     _doseOverlay.DisplayAlphaBeta = config.GlobalAlphaBeta;
-                    _doseOverlay.SummationAlphaBetaLabel = $"Summation computed with α/β = {config.GlobalAlphaBeta:F1} Gy";
+                    SetHotspot(result.MaxDoseGy, result.MaxDoseSliceZ, result.MaxDosePixelX, result.MaxDosePixelY);
+                    RefreshSummationLabels(result.MaxDoseGy, result.TotalReferenceDoseGy);
+                    StatusText = result.StatusMessage;
 
                     if (_doseOverlay.CurrentIsodoseMode != IsodoseMode.Absolute)
                         _doseOverlay.LoadPreset("ReIrradiation");
@@ -154,8 +159,42 @@ namespace EQD2Viewer.App.UI.ViewModels
             finally { IsSummationComputing = false; }
         }
 
+        /// <summary>
+        /// Rebuilds both summation status labels from the current active config + display α/β.
+        /// Called after initial compute, after α/β-driven recompute, and on slider drag so the
+        /// labels never drift out of sync with what the isodose overlay is actually showing.
+        /// </summary>
+        private double _lastMaxDoseGy;
+        private double _lastRefDoseGy;
+
+        private void RefreshSummationLabels(double maxGy, double refGy)
+        {
+            _lastMaxDoseGy = maxGy;
+            _lastRefDoseGy = refGy;
+            if (_activeSummationConfig == null)
+            {
+                SummationInfo = "No summation active";
+                _doseOverlay.SummationAlphaBetaLabel = "";
+                return;
+            }
+            string method = _activeSummationConfig.Method == SummationMethod.EQD2 ? "EQD2" : "Physical";
+            SummationInfo = $"{method} sum: {_activeSummationConfig.Plans.Count} plans | " +
+                            $"Max: {maxGy:F2} Gy | Ref: {refGy:F2} Gy";
+
+            double displayAb = _doseOverlay.DisplayAlphaBeta;
+            double summationAb = _activeSummationConfig.GlobalAlphaBeta;
+            _doseOverlay.SummationAlphaBetaLabel = Math.Abs(displayAb - summationAb) < 0.05
+                ? $"Isodose & summation α/β = {summationAb:F1} Gy"
+                : $"Isodose α/β = {displayAb:F1} Gy   (summation was α/β = {summationAb:F1})";
+        }
+
         internal void RecomputeDisplayEQD2IfActive()
         {
+            // Keep the α/β badge in sync immediately on slider drag, even before the debounced
+            // recompute finishes — otherwise the label lags a slider tick behind reality.
+            if (_isSummationActive && _activeSummationConfig != null)
+                RefreshSummationLabels(_lastMaxDoseGy, _lastRefDoseGy);
+
             if (!_isSummationActive || _summationService == null) return;
 
             if (_displayAlphaBetaDebounce == null)
@@ -193,7 +232,8 @@ namespace EQD2Viewer.App.UI.ViewModels
 
                 if (result.Success)
                 {
-                    SummationInfo = result.StatusMessage;
+                    SetHotspot(result.MaxDoseGy, result.MaxDoseSliceZ, result.MaxDosePixelX, result.MaxDosePixelY);
+                    RefreshSummationLabels(result.MaxDoseGy, result.TotalReferenceDoseGy);
                     StatusText = result.StatusMessage;
                     RequestRender();
                 }
