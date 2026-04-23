@@ -34,6 +34,8 @@ namespace EQD2Viewer.Services.Rendering
         double GetDoseAtPixel(int currentSlice, int pixelX, int pixelY, EQD2Settings? eqd2Settings = null);
 
         List<StructureContourData> GenerateStructureContours(int currentSlice, IEnumerable<StructureData> structures);
+
+        (double windowLevel, double windowWidth) ComputeAutoWindow(int slice);
     }
 
     public class ContourGenerationResult

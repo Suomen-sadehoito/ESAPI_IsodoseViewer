@@ -8,7 +8,12 @@ namespace EQD2Viewer.App.UI.ViewModels
     public partial class MainViewModel
     {
         [RelayCommand]
-        private void AutoPreset() { WindowLevel = 40; WindowWidth = 400; }
+        private void AutoPreset()
+        {
+            var (level, width) = _renderingService.ComputeAutoWindow(CurrentSlice);
+            WindowLevel = level;
+            WindowWidth = width;
+        }
 
         [RelayCommand]
         private void Preset(string type)

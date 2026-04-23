@@ -114,6 +114,7 @@ namespace EQD2Viewer.App.UI.ViewModels
 
             InitializePlotModel();
             _doseOverlay.LoadPreset("Eclipse");
+            AutoPreset();
         }
 
         private void WireIsodoseLevelEvents()

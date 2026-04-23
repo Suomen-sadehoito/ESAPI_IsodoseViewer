@@ -466,6 +466,36 @@ namespace EQD2Viewer.Services
             }
         }
 
+        public (double windowLevel, double windowWidth) ComputeAutoWindow(int slice)
+        {
+            if (_ctCache == null || slice < 0 || slice >= _ctCache.Length)
+                return (40, 400);
+
+            int[,] sliceData = _ctCache[slice];
+            int w = sliceData.GetLength(0);
+            int h = sliceData.GetLength(1);
+
+            var values = new List<int>(w * h);
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int hu = sliceData[x, y] - _huOffset;
+                    if (hu > -900)
+                        values.Add(hu);
+                }
+
+            if (values.Count < 100)
+                return (40, 400);
+
+            values.Sort();
+            int p2 = values[(int)(values.Count * 0.02)];
+            int p98 = values[(int)(values.Count * 0.98)];
+
+            double width = Math.Max(1, p98 - p2);
+            double level = p2 + width / 2.0;
+            return (level, width);
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
