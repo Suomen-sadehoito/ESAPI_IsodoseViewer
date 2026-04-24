@@ -138,7 +138,7 @@ Varian licence.
 
 | Version | Date | Notes |
 |---|---|---|
-| 0.9.3-beta | 2026-04 | DIR diagnostics: convergence logging, TG-132 style QA report (Jacobian / curl / bending energy), FOV overlap analyser. |
+| 0.9.3-beta | 2026-04 | DIR quality pass: SimpleITK BSpline3 canonical pattern (small initial mesh + scale factors + GradientDescentLineSearch). Body-mask preprocessing (HU threshold + largest CC + fillhole) cuts registration time ~9x and eliminates fold artifacts. TG-132 / Bosma 2024 style QA report (Jacobian, curl, bending energy, displacement, histograms). FOV overlap analyser with axis-aligned AABB. Per-level convergence logging including optimiser stop-condition. Monotonic progress mapping across pyramid levels. Research-prototype positioning in UI titles, startup log, and README. First draft of regulatory technical documentation under `docs/regulatory/`. |
 | 0.9.2-beta | 2026-04 | SimpleITK-based B-spline DIR added as optional module. MHA/MHD deformation-field reader. |
 | 0.9.1-beta | 2026-04 | Clean Architecture refactor. Offline DevRunner, centralised BuildOutput, dependency management. |
 | 0.9.0-beta | 2026-03 | Feature and calculation stabilisation. |
