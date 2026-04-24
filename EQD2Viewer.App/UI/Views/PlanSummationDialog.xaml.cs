@@ -1,3 +1,4 @@
+using EQD2Viewer.Core.Calculations;
 using EQD2Viewer.Core.Models;
 using EQD2Viewer.Core.Data;
 using EQD2Viewer.Core.Interfaces;
@@ -278,6 +279,21 @@ namespace EQD2Viewer.App.UI.Views
                     row.DeformationField = field;
                     row.DirStatus = "DIR calculated";
                     endReason = $"SUCCESS — DVF {field.XSize}x{field.YSize}x{field.ZSize}";
+
+                    // TG-132 style QA analysis on a background thread; report hits the log.
+                    // Fire-and-forget so the user is not blocked while it scans the field.
+                    _ = Task.Run(() =>
+                    {
+                        try
+                        {
+                            var report = DeformationFieldAnalyzer.Analyze(field);
+                            SimpleLogger.Info("[DIR] Quality report:" + Environment.NewLine + report.FormatSummary());
+                        }
+                        catch (Exception qex)
+                        {
+                            SimpleLogger.Warning($"[DIR] Quality analysis failed: {qex.GetType().Name}: {qex.Message}");
+                        }
+                    });
                 }
                 else
                 {
