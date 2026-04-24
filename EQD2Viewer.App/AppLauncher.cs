@@ -32,6 +32,8 @@ namespace EQD2Viewer.App
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
 
+            LogResearchDisclaimer();
+
             // MhaReader is always available (EQD2Viewer.Registration is always built).
             var dfLoader = new MhaReader();
 
@@ -73,6 +75,24 @@ namespace EQD2Viewer.App
                 window.ShowDialog();
             else
                 window.Show();
+        }
+
+        /// <summary>
+        /// Writes a prominent disclaimer banner to the log on every startup, stating
+        /// that this software is a research prototype and is not a medical device.
+        /// The banner is here so that any log excerpt shared or inspected during QA
+        /// carries the disclaimer — regulator, reviewer, or successor developer alike.
+        /// </summary>
+        private static void LogResearchDisclaimer()
+        {
+            const string bar = "==============================================================";
+            SimpleLogger.Info(bar);
+            SimpleLogger.Info("EQD2 Viewer — RESEARCH PROTOTYPE");
+            SimpleLogger.Info("Not a medical device (not CE-marked, not FDA-cleared).");
+            SimpleLogger.Info("Not validated for clinical use. Outputs must not drive");
+            SimpleLogger.Info("clinical decisions without independent verification against");
+            SimpleLogger.Info("a validated reference system.");
+            SimpleLogger.Info(bar);
         }
 
         /// <summary>

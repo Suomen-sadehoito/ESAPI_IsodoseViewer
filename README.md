@@ -1,104 +1,163 @@
-# EQD2 Viewer
+# EQD2 Viewer — Research Prototype
 
-ESAPI-skripti Varian Eclipseen EQD2-jakaumien tarkasteluun ja uudelleensäteilytyksen kumulatiivisen annosjakauman arviointiin.
+> ## ⚠️ Research prototype / Not a medical device
+>
+> **This repository contains a research prototype for studying EQD2 dose transformations,
+> deformable image registration (DIR), and dose-volume histogram (DVH) analysis on
+> radiotherapy data.**
+>
+> - **This software is not a medical device** within the meaning of Regulation (EU) 2017/745 (MDR) or 21 CFR 820.
+> - **This software has not been CE-marked, FDA-cleared, or otherwise certified for any medical purpose.**
+> - **It is not validated for clinical use** and must not be used to make or support decisions about individual patient treatment.
+> - **No warranty is given, express or implied**, regarding the correctness, safety, or fitness for any particular purpose of the outputs.
+> - **The authors do not provide clinical deployment support**, do not recommend any specific build or configuration for clinical use, and do not represent that the code is ready for such use.
+>
+> Anyone wishing to reproduce or extend this work is responsible for any regulatory, ethical,
+> and institutional obligations in their own jurisdiction. Independent verification of every
+> numerical result against a validated reference is required for any use that could affect a human.
+>
+> ### Tutkimusprototyyppi / Ei lääkinnällinen laite
+>
+> **Tämä repository sisältää tutkimusprototyypin EQD2-annosmuunnosten, deformable image
+> registrationin ja DVH-analyysin tutkimiseen säteilyhoitodatalla.**
+>
+> - **Tämä ohjelmisto ei ole lääkinnällinen laite** EU:n MDR 2017/745 tarkoittamassa mielessä.
+> - **Ohjelmaa ei ole CE-merkitty** eikä muuten sertifioitu kliiniseen käyttöön.
+> - **Sitä ei ole validoitu kliiniseen käyttöön** eikä sitä saa käyttää yksittäisten potilaiden hoitopäätösten tekemiseen tai tukemiseen.
+> - **Tuloksille ei anneta mitään takuita** niiden oikeellisuudesta, turvallisuudesta tai soveltuvuudesta mihinkään tarkoitukseen.
+> - **Tekijät eivät tarjoa kliinistä käyttöönottotukea.**
+>
+> Jokainen joka haluaa toistaa tai laajentaa tätä tutkimustyötä vastaa omasta sääntely-, eettisestä ja organisatorisesta velvoitteestaan omalla lainkäyttöalueellaan.
 
-## Projektin tila
-**Alpha / Beta:** Perustoiminnallisuus on valmiina, mutta kattavaa testausta kliinisillä potilailla ei ole vielä tehty riittävästi. Käytä omalla vastuulla ja tarkista laskelmat aina manuaalisesti.
+---
 
-## Arkkitehtuuri ja ominaisuudet
-Projekti on rakennettu Clean Architecture -mallilla, joka eristää Varianin ESAPI-riippuvuudet, käyttöliittymän ja liiketoimintalogiikan toisistaan. 
+## What this repository is
 
-Tämä mahdollistaa sovelluksen joustavan kehittämisen ja testaamisen paikallisesti:
-1. Kliininen data voidaan purkaa Eclipsestä lokaaleiksi JSON-tiedostoiksi `FixtureGenerator`-työkalun avulla.
-2. Kehitystyötä ja testausta voidaan jatkaa `DevRunner.exe`-työpöytäsovelluksella täysin ilman Eclipse-ympäristöä.
+A sandbox for exploring algorithms and QA techniques related to radiotherapy dose
+accumulation:
 
-## Vaatimukset
-- Eclipse + ESAPI v15.6 tai uudempi
+- EQD2 (Equivalent Dose in 2 Gy fractions) transformation with per-structure α/β
+- Dose-volume histogram (DVH) computation
+- B-spline deformable image registration via SimpleITK
+- TG-132 / Bosma 2024 style DIR quality metrics (Jacobian determinant, curl, bending
+  energy, FOV overlap)
+- Clean-Architecture split between domain logic, rendering, and data adapters so the
+  algorithms can be exercised offline from JSON fixtures without any clinical system
+
+## What this repository is *not*
+
+- Not a replacement for validated clinical dose-summation or DIR software
+- Not a recommended toolchain for any clinical or regulatory workflow
+- Not a turn-key plugin ready for deployment
+
+## Architecture
+
+The code is organised in a Clean Architecture layering so that the algorithmic core has
+no dependency on the Varian ESAPI environment. This makes the algorithms easy to study
+and test in isolation:
+
+- `EQD2Viewer.Core` — domain types, EQD2 math, DVH, rendering math, colour maps
+- `EQD2Viewer.Calculations` — image-processing primitives
+- `EQD2Viewer.Services` — service layer (DVH service, summation service)
+- `EQD2Viewer.Registration` — DIR interfaces + MHA deformation-field reader
+- `EQD2Viewer.Registration.ITK` — optional SimpleITK-based B-spline DIR implementation
+- `EQD2Viewer.App` — WPF UI for exploring the outputs
+- `EQD2Viewer.DevRunner` — standalone WPF host for offline exploration via JSON fixtures
+- `EQD2Viewer.Fixtures` — JSON fixture schema and loader
+- `EQD2Viewer.Tests` — 300+ unit and integration tests against the core algorithms
+
+The ESAPI-dependent adapter layer (`EQD2Viewer.Esapi`, `EQD2Viewer.FixtureGenerator`) exists
+solely for generating offline JSON fixtures from consented/anonymised data so that the
+algorithms can be studied outside the TPS environment. It is not an invitation to deploy the
+code as an Eclipse plugin.
+
+## Building from source (for research / study only)
+
+Development environment:
+
 - .NET Framework 4.8
-- Visual Studio 2022 (tai MSBuild 17+), x64-kohde
+- Visual Studio 2022 or MSBuild 17+
+- x64 target
 
-## Kääntäminen ja asennus
+### Basic build (no DIR)
 
-Varianin suljetun lähdekoodin ESAPI-kirjastoja ei jaeta versionhallinnassa tekijänoikeussyistä. Ennen ensimmäistä kääntämistä:
+```
+dotnet build EQD2Viewer.sln -c Debug
+```
 
-1. Kopioi tiedostot `VMS.TPS.Common.Model.API.dll` ja `VMS.TPS.Common.Model.Types.dll` Eclipsen asennuskansiosta (tai sairaalan työasemalta) projektin `lib\ESAPI\`-kansioon.
-2. Avaa `EQD2Viewer.sln` Visual Studiossa.
-3. Varmista yläpalkista, että valittuna on **Release** ja **x64**.
-4. Valitse **Build -> Build Solution**.
-5. Käännöksen jälkeen projektin juureen ilmestyy `BuildOutput`-kansio, josta löytyvät valmiit asennustiedostot:
-   - **01_Eclipse_ESAPI_Plugins:** Kopioi täältä löytyvät `.esapi.dll`-tiedostot suoraan sairaalan Eclipsen skriptikansioon. Costura.Fody on pakannut kaikki tarvittavat riippuvuudet näiden tiedostojen sisään.
-   - **02_Standalone_Runner:** Sisältää `DevRunner.exe`:n ja testidatan paikallista käyttöä ja kehitystä varten.
+### Build with DIR algorithms (SimpleITK)
 
-### Vaihtoehto: Release-WithITK (deformable-rekisteröinnillä)
+SimpleITK is not on NuGet and must be downloaded separately:
 
-Konfiguraatio `Release-WithITK` kääntää edellisten lisäksi `EQD2Viewer.Registration.ITK.dll`-moduulin, joka mahdollistaa B-spline-pohjaisen deformable image registration (DIR) -laskennan suoraan ohjelmasta käsin.
+1. Download `SimpleITK-2.5.3-CSharp-win64-x64.zip` from
+   `https://github.com/SimpleITK/SimpleITK/releases/tag/v2.5.3`
+2. Extract DLLs to `lib/SimpleITK/` in the repo
+3. Build with the `Release-WithITK` configuration
 
-SimpleITK **ei** ole NuGet.orgissa — binäärit täytyy ladata erikseen, samaan tapaan kuin ESAPI-kirjastot:
+The DIR module is loaded at runtime by reflection; if the DLL is absent the application
+runs without that feature.
 
-1. Lataa **SimpleITK 2.5.3** Windows x64 C# -paketti GitHubista:  
-   `https://github.com/SimpleITK/SimpleITK/releases/tag/v2.5.3`  
-   Tiedosto: `SimpleITK-2.5.3-CSharp-win64-x64.zip` (16,8 MB)
-2. Pura ZIP ja kopioi kaikki DLL-tiedostot projektin `lib\SimpleITK\`-kansioon (kansio on jo valmiina repossa). SimpleITK 2.5.3 sisältää:
-   - `SimpleITKCSharpManaged.dll` (hallittu .NET-kokoonpano)
-   - `SimpleITKCSharpNative.dll` (natiivi C++-wrapper)
-3. Vaihda Visual Studion yläpalkin konfiguraatioksi **Release-WithITK** (x64).
-4. Valitse **Build -> Build Solution**.
-5. `BuildOutput\Release-WithITK\`-kansioon ilmestyy ylimääräinen hakemisto `03_ITK_Registration\` natiiveineen.
-6. Rekisteröintimoduuli ladataan suoritusaikana reflektiolla — jos `EQD2Viewer.Registration.ITK.dll` puuttuu, ohjelma toimii normaalisti ilman DIR-ominaisuutta.
+## Running the research sandbox offline
 
-> **Huom.** Deformable-rekisteröinti on laskennallisesti raskas operaatio. Se sopii jälkikäteiseen arviointiin, ei reaaliaikaiseen kliiniseen käyttöön. Tulos on aina tarkistettava kliinisesti ennen hyödyntämistä hoitopäätöksissä.
+The `DevRunner` is a self-contained WPF host that loads JSON fixtures from disk and
+exposes the same UI used for algorithmic exploration, without requiring Eclipse or any
+other TPS:
 
-#### DIR paikallisessa kehityksessä (Debug + DevRunner)
+```
+BuildOutput/Debug/EQD2Viewer.DevRunner.exe
+```
 
-DIR-moduuli kääntyy automaattisesti myös **Debug**-konfiguraatiossa kun SimpleITK-DLL:t ovat paikoillaan `lib\SimpleITK\`:ssa. Tämä mahdollistaa DIR-laskennan kokeilun DevRunnerissa ilman Release-WithITK-vaihtoa.
+Fixtures for offline use can be generated from data to which the user has lawful access;
+this repository ships only synthetic / anonymised examples in `EQD2Viewer.Tests/TestFixtures/`.
 
-Jos SimpleITK-DLL:iä ei ole paikoillaan, `EQD2Viewer.Registration.ITK`-projekti rakentuu tyhjänä stubina — muut projektit rakentuvat normaalisti, ja DIR-nappi näyttää kliinisesti *"DIR module not loaded"* -tilan. Käyttäjä ei saa hämmentäviä käännösvirheitä.
+## Tests
 
-**Vianjäljitys** jos DIR-nappi sanoo "not loaded":
-- Tarkista loki `EQD2Viewer_Dev.log` — `[DIR-probe]`-rivit kertovat tarkalleen mistä kansiosta `Registration.ITK.dll`:ää etsittiin ja mikä puuttui
-- Kokeile rakentaa *Release-WithITK* ja kopioida kaikki 5 DLL:ää `BuildOutput\02_Eclipse_With_ITK\`:stä skriptikansioon
+```
+dotnet test EQD2Viewer.Tests/EQD2Viewer.Tests.csproj
+```
 
-## Käyttö
+The test suite covers the algorithmic core (EQD2 transform, DVH integration, rasterisation,
+matrix math, marching squares, colour maps, rendering pipeline, serialization, DIR QA
+metrics). It is **not** a clinical validation — passing tests indicate implementation matches
+specification, not that outputs are clinically accurate.
 
-**Kliininen käyttö (Eclipse):**
-1. Avaa potilas ja hoitosuunnitelma Eclipsessä.
-2. Aja skripti `EQD2Viewer.App.esapi.dll`.
+## Third-party licences
 
-**Paikallinen kehitys ja testaus:**
-1. Avaa kansio `02_Standalone_Runner`.
-2. Käynnistä `EQD2Viewer.DevRunner.exe`.
-
-**DIR-laskennan käyttö (vain Release-WithITK, Eclipse-ympäristössä):**
-1. Avaa summaatio-dialogi ja rastita kaksi suunnitelmaa, merkitse toinen referenssiksi.
-2. Klikkaa ei-referenssi-riville *Calculate DIR* — SimpleITK ajaa B-spline-rekisteröinnin (30 s – 3 min).
-3. Tila muuttuu *"DIR calculated"* (vihreä) kun valmis. *"Compute summation"* käyttää DVF:ää annoksen mappaamisessa.
-4. Isodoosi-paneelissa: **Auto from Dmax** -preset ja **Go to hotspot** -nappi auttavat löytämään summien kuumat pisteet.
-
-## Kolmannen osapuolen lisenssit
-
-Tämä ohjelmisto käyttää avoimen lähdekoodin kirjastoja. Yksityiskohtaiset tekijänoikeus- ja lisenssi-ilmoitukset löytyvät tiedostosta [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
-
-| Kirjasto | Versio | Lisenssi | Käyttö |
+| Library | Version | Licence | Used for |
 |---|---|---|---|
-| **SimpleITK** | 2.5.3 | Apache 2.0 | DIR-rekisteröinti (`Release-WithITK`) |
-| **ITK (Insight Toolkit)** | 5.4.5 | Apache 2.0 | SimpleITK:n taustajärjestelmä |
+| SimpleITK | 2.5.3 | Apache 2.0 | DIR (optional, `Release-WithITK`) |
+| ITK | 5.4.5 | Apache 2.0 | SimpleITK backend |
 
-SimpleITK ja ITK ovat valinnaisia ja ladataan vain `Release-WithITK`-konfiguraatiossa. Perus-`Release`-käännös ei sisällä eikä jaa kyseisiä kirjastoja.
+See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the full notices.
 
-## Versiohistoria
+Varian ESAPI libraries are **not** redistributed with this repository. Reproducing the
+ESAPI-dependent adapter projects requires a user to obtain those binaries under their own
+Varian licence.
 
-| Versio | Päivämäärä | Kuvaus |
+## Version history
+
+| Version | Date | Notes |
 |---|---|---|
-| **0.9.3-beta** | 2026-04 | Isodose-UX uusiksi: Dmax-hotspot + "Go to hotspot" -navigointi, Auto-scale-preset Dmaxista, inline-muokattavat kynnysarvot, solo/delete-napit, per-rivin opacity, oikean-klikin värinvalinta. α/β-sliderin live-päivitys korjattu. DIR-napin diagnostiikka + logitus. Kattavat testit (+58) ja CI/CD-matriisi SimpleITK-cachella. |
-| **0.9.2-beta** | 2026-04 | Deformable image registration SimpleITK:llä (valinnainen `Release-WithITK`-konfiguraatio). MHA/MHD DVF -tiedoston luku. B-spline DIR -summaatio. |
-| **0.9.1-beta** | 2026-04 | Clean Architecture -uudistus. Erillinen DevRunner offline-kehitykseen, keskitetty BuildOutput-kansiointi ja paranneltu riippuvuuksien hallinta. |
-| **0.9.0-beta** | 2026-03 | Beta-vaiheen julkaisu. Ominaisuuksien ja laskentalogiikan vakauttamista. |
-| **0.3.0-alpha** | 2026-03 | Automaattinen `.esapi.dll`-päätteen lisääminen käännösvaiheessa (Assembly Name -päivitys projektitiedostoon). |
-| **0.2.0-alpha** | 2026-03 | Yksikkötestit (107 kpl), ESAPI-stub-kirjasto CI-kääntämiseen, GitHub Actions -pipeline. |
-| **0.1.0-alpha** | 2026-03 | Ensimmäinen alpha. CT/annos-näyttö, isodoosit, EQD2-muunnos, summaatio, DVH, rakennekohtainen α/β. |
+| 0.9.3-beta | 2026-04 | DIR diagnostics: convergence logging, TG-132 style QA report (Jacobian / curl / bending energy), FOV overlap analyser. |
+| 0.9.2-beta | 2026-04 | SimpleITK-based B-spline DIR added as optional module. MHA/MHD deformation-field reader. |
+| 0.9.1-beta | 2026-04 | Clean Architecture refactor. Offline DevRunner, centralised BuildOutput, dependency management. |
+| 0.9.0-beta | 2026-03 | Feature and calculation stabilisation. |
+| 0.3.0-alpha | 2026-03 | Automatic `.esapi.dll` naming via project metadata. |
+| 0.2.0-alpha | 2026-03 | Unit test suite, ESAPI stubs for offline CI, GitHub Actions pipeline. |
+| 0.1.0-alpha | 2026-03 | First alpha. CT/dose display, isodose, EQD2, summation, DVH, per-structure α/β. |
 
-## Tekijät
-Risto Hirvilammi & Juho Ala-Myllymäki, ÖVPH
+## Authors
 
-## Lisenssi
-MIT — ks. `LICENSE.txt`
+Risto Hirvilammi & Juho Ala-Myllymäki.
+
+Contributions are made in a personal / research capacity. Inclusion of any institutional
+affiliation in commit history or older versions does not imply institutional endorsement,
+validation, or clinical acceptance of this software.
+
+## Licence
+
+MIT — see [`LICENSE.txt`](LICENSE.txt).
+
+The MIT "AS IS" warranty disclaimer is a copyright-licence term. It does not, and cannot,
+discharge any regulatory obligations imposed on a subsequent user under MDR, FDA rules, or
+national radiation-safety law. Those obligations rest entirely with whoever uses the code.

@@ -8,7 +8,7 @@
         xmlns:oxy="http://oxyplot.org/wpf"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=False}"
-        Title="EQD2 Viewer — Re-irradiation Assessment Tool"
+        Title="EQD2 Viewer — Research Prototype (not a medical device, not for clinical use)"
         Height="1050" Width="1500"
         Background="#0C0E12"
         WindowStartupLocation="CenterScreen"

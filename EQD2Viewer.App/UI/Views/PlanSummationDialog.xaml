@@ -1,7 +1,7 @@
 <Window x:Class="EQD2Viewer.App.UI.Views.PlanSummationDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Dose Summation — Re-irradiation Assessment"
+        Title="Dose Summation — Research Prototype (not for clinical use)"
         Height="700" Width="1050"
         WindowStartupLocation="CenterOwner"
         Background="#0C0E12" Foreground="#F0F2F5" FontFamily="Segoe UI">
