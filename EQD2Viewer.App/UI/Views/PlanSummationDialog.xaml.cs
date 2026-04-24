@@ -267,6 +267,23 @@ namespace EQD2Viewer.App.UI.Views
             string opLabel = $"{row.CourseId}/{row.PlanId} onto {refRow.CourseId}/{refRow.PlanId}";
             SimpleLogger.Info($"[DIR] TASK STARTED — {opLabel} | fixed={refCt.XSize}x{refCt.YSize}x{refCt.ZSize}, moving={movCt.XSize}x{movCt.YSize}x{movCt.ZSize}");
 
+            // FOV diagnostic runs in microseconds and prints *before* the expensive
+            // registration starts, so a user who spots a bad overlap can press Cancel
+            // within seconds rather than waiting out a failed registration.
+            try
+            {
+                var fov = VolumeOverlapAnalyzer.Analyze(refCt, movCt);
+                SimpleLogger.Info("[DIR] " + fov.FormatSummary());
+                if (fov.Verdict == VolumeOverlapVerdict.Fail)
+                    SimpleLogger.Warning("[DIR] FOV overlap < 50% — registration very likely to fail. Consider cancelling.");
+                else if (fov.Verdict == VolumeOverlapVerdict.Warning)
+                    SimpleLogger.Warning("[DIR] FOV overlap < 70% — borderline. Check the report before trusting the result.");
+            }
+            catch (Exception fex)
+            {
+                SimpleLogger.Warning($"[DIR] FOV diagnostic failed: {fex.GetType().Name}: {fex.Message}");
+            }
+
             var sw = System.Diagnostics.Stopwatch.StartNew();
             string endReason = "unknown";
             try
