@@ -32,27 +32,35 @@ namespace EQD2Viewer.Registration.ITK.Services
     ///   the log tells us whether a phase converged, hit the iteration cap, or was aborted.
     ///   Per-iteration log emits every 10th iter to avoid spam on large volumes.
     ///
-    /// Tuning rationale (Package 2 — matches ESTRO / Bosma 2024 guidance):
-    ///   B-spline mesh 10x10x10 (was 6) — denser control grid for thorax-scale anatomy,
-    ///     control-point spacing drops roughly 90 mm -> 55 mm for a typical CT.
-    ///   B-spline iterations 20 (was 30) and LBFGS-B func-eval cap 200 (was 1000) —
-    ///     tighter budget prevents the optimizer from drifting on a noisy metric.
-    ///   Cost-function convergence factor 1e9 (was 1e7) — stop earlier once relative
-    ///     improvement is small; sub-voxel accuracy is not required for dose summation.
-    ///   Pyramid 2 levels {2, 1} (was 3 levels {4, 2, 1}) — skips the costly shrink-4
-    ///     tier; affine still converges, B-spline spends time where it matters.
-    ///   Affine keeps RANDOM sampling (good fit for gradient descent); B-spline switches
-    ///     to REGULAR sampling so LBFGS-B sees a deterministic metric, which it requires
-    ///     for its line search to converge instead of drifting on stochastic noise.
+    /// Tuning rationale (Package 4 — SimpleITK ImageRegistrationMethodBSpline3 pattern):
+    ///   Uses BSplineTransformInitializer with a small initial mesh (3x3x3) and then
+    ///   SetInitialTransformAsBSpline with scaleFactors = {1, 2}. The B-spline control
+    ///   grid is automatically refined between pyramid levels:
+    ///     Level 0 (shrink 2, half-res): mesh 3 -> 27 CP -> 81 parameters.  Fast.
+    ///     Level 1 (shrink 1, full res): mesh 6 -> 216 CP -> 648 parameters. Manageable.
+    ///   Parameter count grows with resolution — the opposite of Package 2, where a fixed
+    ///   10x10x10 mesh forced 3000 parameters on the slow full-res level.
+    ///
+    ///   Optimizer changed from LBFGS-B to GradientDescentLineSearch:
+    ///     line search tolerates noisy metrics, so RANDOM sampling works fine and we do
+    ///     not depend on strict per-iteration determinism. This is the combination the
+    ///     SimpleITK BSpline3 example recommends and is what the SimpleITK notebooks use
+    ///     for most multi-resolution B-spline demos.
+    ///
+    ///   Budget: 50 iterations / level, convergence window 5. Expected wall time on a
+    ///   desktop Xeon/Ryzen with 12 logical cores and a ~500x500x280 CT: 3-6 min.
     /// </summary>
     public class ItkRegistrationService : IRegistrationService
     {
-        private const uint BsplineMeshSize = 10;
-        private const uint BsplineIterations = 20;
+        private const uint BsplineInitialMeshSize = 3;
+        private const uint BsplineMeshScaleFactor = 2; // level 0 -> 3^3, level 1 -> 6^3
+        private const uint BsplineIterations = 50;
+        private const double BsplineLearningRate = 1.0;
+        private const double BsplineConvergenceMinValue = 1e-4;
+        private const uint BsplineConvergenceWindowSize = 5;
+
         private const uint AffineIterations = 100;
         private const double MetricSamplingFraction = 0.05;
-        private const uint BsplineMaxFunctionEvaluations = 200;
-        private const double BsplineCostFunctionConvergenceFactor = 1e9;
         private const int PyramidLevels = 2;
 
         public Task<DeformationField?> RegisterAsync(
@@ -70,13 +78,17 @@ namespace EQD2Viewer.Registration.ITK.Services
         {
             try
             {
+                uint threadCount;
+                try { threadCount = ProcessObject.GetGlobalDefaultNumberOfThreads(); }
+                catch { threadCount = 0; }
+
                 SimpleLogger.Info(
-                    $"[DIR] Settings: mesh={BsplineMeshSize}^3, bsplineIter={BsplineIterations}, " +
-                    $"affineIter={AffineIterations}, sampling={MetricSamplingFraction:F3}, " +
-                    $"pyramidLevels={PyramidLevels}, " +
-                    $"bsplineMaxFuncEvals={BsplineMaxFunctionEvaluations}, " +
-                    $"bsplineConvergenceFactor={BsplineCostFunctionConvergenceFactor:E1}, " +
-                    $"affineSampling=RANDOM, bsplineSampling=REGULAR");
+                    $"[DIR] Settings: initMesh={BsplineInitialMeshSize}^3, " +
+                    $"scaleFactors={{1,{BsplineMeshScaleFactor}}}, " +
+                    $"bsplineIter={BsplineIterations}, affineIter={AffineIterations}, " +
+                    $"sampling={MetricSamplingFraction:F3}, pyramidLevels={PyramidLevels}, " +
+                    $"optimizer=GradientDescentLineSearch, samplingStrategy=RANDOM, " +
+                    $"itkThreads={threadCount}");
 
                 ct.ThrowIfCancellationRequested();
                 progress?.Report(5);
@@ -93,7 +105,7 @@ namespace EQD2Viewer.Registration.ITK.Services
 
                 var reg = new ImageRegistrationMethod();
                 reg.SetMetricAsMattesMutualInformation(numberOfHistogramBins: 50);
-                // Phase 1 (affine): RANDOM sampling pairs well with gradient descent.
+                // RANDOM sampling works for both phases when using gradient descent variants.
                 reg.SetMetricSamplingStrategy(ImageRegistrationMethod.MetricSamplingStrategyType.RANDOM);
                 reg.SetMetricSamplingPercentage(MetricSamplingFraction);
 
@@ -142,37 +154,36 @@ namespace EQD2Viewer.Registration.ITK.Services
                     $"stop=\"{SafeGetStopCondition(reg)}\"");
                 progress?.Report(50);
 
-                // Phase 2: B-spline deformable.
+                // Phase 2: B-spline deformable (SimpleITK BSpline3 canonical pattern).
                 ct.ThrowIfCancellationRequested();
-                var bsplineTx = new BSplineTransform(3);
-                var meshSize = new VectorUInt32(new uint[] { BsplineMeshSize, BsplineMeshSize, BsplineMeshSize });
-                bsplineTx.SetTransformDomainMeshSize(meshSize);
-                bsplineTx.SetTransformDomainOrigin(fixedF.GetOrigin());
-                bsplineTx.SetTransformDomainDirection(fixedF.GetDirection());
 
-                var sp = fixedF.GetSpacing();
-                var sz = fixedF.GetSize();
-                bsplineTx.SetTransformDomainPhysicalDimensions(new VectorDouble(new double[]
+                // BSplineTransformInitializer builds a B-spline whose domain matches the
+                // fixed image (origin / direction / physical dimensions) with the requested
+                // initial mesh size. Replaces the manual SetTransformDomain* boilerplate
+                // used in Package 2 and is the recommended way in the SimpleITK docs.
+                var initMesh = new VectorUInt32(new uint[]
                 {
-                    sp[0] * (sz[0] - 1.0),
-                    sp[1] * (sz[1] - 1.0),
-                    sp[2] * (sz[2] - 1.0)
-                }));
+                    BsplineInitialMeshSize, BsplineInitialMeshSize, BsplineInitialMeshSize
+                });
+                var bsplineTx = SimpleITK.BSplineTransformInitializer(fixedF, initMesh);
 
                 reg.SetMovingInitialTransform(affineTx);
-                reg.SetInitialTransform(bsplineTx, inPlace: true);
-                reg.SetOptimizerAsLBFGSB(
-                    gradientConvergenceTolerance: 1e-5,
-                    numberOfIterations: BsplineIterations,
-                    maximumNumberOfCorrections: 5,
-                    maximumNumberOfFunctionEvaluations: BsplineMaxFunctionEvaluations,
-                    costFunctionConvergenceFactor: BsplineCostFunctionConvergenceFactor);
 
-                // Switch to REGULAR sampling for LBFGS-B: the line search requires a
-                // deterministic metric. RANDOM sampling re-draws per iteration and was
-                // the documented cause of the L2 metric drift we saw in Package 1 logs.
-                reg.SetMetricSamplingStrategy(ImageRegistrationMethod.MetricSamplingStrategyType.REGULAR);
-                reg.SetMetricSamplingPercentage(MetricSamplingFraction);
+                // SetInitialTransformAsBSpline with scale factors: SimpleITK automatically
+                // resamples the B-spline control grid between pyramid levels so the number
+                // of parameters grows with image resolution. Level 0 solves a low-dimensional
+                // problem on a coarse image; level 1 refines on the full image.
+                var scaleFactors = new VectorUInt32(new uint[] { 1, BsplineMeshScaleFactor });
+                reg.SetInitialTransformAsBSpline(bsplineTx, inPlace: true, scaleFactors);
+
+                // Gradient descent with line search: tolerates the noise introduced by
+                // RANDOM metric sampling, unlike LBFGS-B. No function-eval cap needed —
+                // the line search bounds the work per iteration on its own.
+                reg.SetOptimizerAsGradientDescentLineSearch(
+                    learningRate: BsplineLearningRate,
+                    numberOfIterations: BsplineIterations,
+                    convergenceMinimumValue: BsplineConvergenceMinValue,
+                    convergenceWindowSize: BsplineConvergenceWindowSize);
 
                 reg.RemoveAllCommands();
 
