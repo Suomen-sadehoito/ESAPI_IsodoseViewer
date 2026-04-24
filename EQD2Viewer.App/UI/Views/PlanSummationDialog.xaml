@@ -250,8 +250,19 @@
         <!-- ACTIONS -->
         <Grid Grid.Row="6">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <Button Grid.Column="1" Content="Compute summation" Style="{StaticResource BtnPrimary}" Click="Compute_Click" IsDefault="True" Width="160" Margin="0,0,8,0" FontWeight="SemiBold"
-                    ToolTip="Close this dialog and run the voxel-by-voxel summation using the selected plans, registrations, DIRs and α/β."/>
+            <Button Grid.Column="1" Content="Compute summation" Click="Compute_Click" IsDefault="True" Width="160" Margin="0,0,8,0" FontWeight="SemiBold"
+                    ToolTip="Close this dialog and run the voxel-by-voxel summation using the selected plans, registrations, DIRs and α/β.">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource BtnPrimary}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsAnyCalculating, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                <Setter Property="IsEnabled" Value="False"/>
+                                <Setter Property="ToolTip" Value="A DIR registration is running — wait for it to finish before computing the summation."/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
             <Button Grid.Column="2" Content="Cancel" Style="{StaticResource Btn}" IsCancel="True" Width="80"
                     ToolTip="Discard these settings and close the dialog. No summation is run."/>
         </Grid>

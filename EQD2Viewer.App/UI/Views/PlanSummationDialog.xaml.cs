@@ -153,8 +153,6 @@ namespace EQD2Viewer.App.UI.Views
 
             if (_registrationService == null)
             {
-                // Should be unreachable because the button is bound to IsDirCalculationEnabled,
-                // but surface the reason explicitly if it ever happens (WPF binding quirks, etc.)
                 SimpleLogger.Warning("[DIR] _registrationService is null — ITK module not loaded");
                 MessageBox.Show(
                     "DIR module is not loaded.\n\n" +
@@ -163,6 +161,19 @@ namespace EQD2Viewer.App.UI.Views
                     "Build with the Release-WithITK configuration and deploy all 5 DLLs " +
                     "from BuildOutput\\02_Eclipse_With_ITK\\ to the Eclipse scripts folder.",
                     "DIR unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Global lock: disallow starting a second DIR while one is already running. SimpleITK
+            // doesn't tolerate two simultaneous ImageRegistrationMethod.Execute calls well and
+            // the UI can get confused when two async awaits race for the same row fields.
+            if (IsAnyCalculating)
+            {
+                SimpleLogger.Info("[DIR] Ignored — another DIR is already running.");
+                MessageBox.Show(
+                    "Another DIR registration is already running.\n\n" +
+                    "Wait for it to finish (watch the progress bar) or click Cancel first.",
+                    "DIR busy", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -252,8 +263,11 @@ namespace EQD2Viewer.App.UI.Views
 
             row.DirStatus = "Registering…";
             TbRegistrationStatus.Text = $"Running SimpleITK B-spline on {refCt.XSize}×{refCt.YSize}×{refCt.ZSize} volumes…";
-            SimpleLogger.Info($"[DIR] Starting SimpleITK registration: fixed={refCt.XSize}x{refCt.YSize}x{refCt.ZSize}, moving={movCt.XSize}x{movCt.YSize}x{movCt.ZSize}");
+            string opLabel = $"{row.CourseId}/{row.PlanId} onto {refRow.CourseId}/{refRow.PlanId}";
+            SimpleLogger.Info($"[DIR] TASK STARTED — {opLabel} | fixed={refCt.XSize}x{refCt.YSize}x{refCt.ZSize}, moving={movCt.XSize}x{movCt.YSize}x{movCt.ZSize}");
 
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            string endReason = "unknown";
             try
             {
                 var progress = new Progress<int>(p => { if (PbRegistration != null) PbRegistration.Value = p; });
@@ -263,33 +277,37 @@ namespace EQD2Viewer.App.UI.Views
                 {
                     row.DeformationField = field;
                     row.DirStatus = "DIR calculated";
-                    SimpleLogger.Info($"[DIR] Success — {field.XSize}x{field.YSize}x{field.ZSize} DVF stored on row");
+                    endReason = $"SUCCESS — DVF {field.XSize}x{field.YSize}x{field.ZSize}";
                 }
                 else
                 {
                     SimpleLogger.Warning("[DIR] RegisterAsync returned null");
                     row.DirStatus = "DIR failed";
+                    endReason = "NULL-RESULT (registration returned no field)";
                     MessageBox.Show("Registration completed but returned no field. Check the log.",
                         "DIR error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
             catch (OperationCanceledException)
             {
-                SimpleLogger.Info("[DIR] Cancelled by user");
                 row.DirStatus = "Cancelled";
+                endReason = "CANCELLED";
             }
             catch (Exception ex)
             {
                 SimpleLogger.Error("[DIR] RegisterAsync threw", ex);
                 row.DirStatus = "DIR failed";
-                MessageBox.Show($"Registration failed:\n\n{ex.Message}\n\nSee EQD2Viewer_*.log for details.",
+                endReason = $"EXCEPTION — {ex.GetType().Name}: {ex.Message}";
+                MessageBox.Show($"Registration failed:\n\n{ex.Message}\n\nSee EQD2Viewer.log for details.",
                     "DIR error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
+                sw.Stop();
                 row.IsCalculating = false;
                 IsAnyCalculating = false;
                 if (TbRegistrationStatus != null) TbRegistrationStatus.Text = "";
+                SimpleLogger.Info($"[DIR] TASK ENDED — {opLabel} | {endReason} | elapsed {sw.Elapsed.TotalSeconds:F1}s");
             }
         }
 
