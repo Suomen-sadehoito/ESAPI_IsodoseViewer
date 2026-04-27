@@ -1,6 +1,7 @@
 ﻿using EQD2Viewer.Core.Data;
 using EQD2Viewer.Core.Interfaces;
 using EQD2Viewer.Core.Logging;
+using EQD2Viewer.Fixtures;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,12 +22,7 @@ namespace EQD2Viewer.DevRunner
     {
         private readonly string _fixtureDir;
 
-        private static readonly JsonSerializerOptions JsonOpts = new()
-        {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true
-        };
+        private static readonly JsonSerializerOptions JsonOpts = FixtureJsonOptions.Default;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FixtureFormatDataSource"/> class.

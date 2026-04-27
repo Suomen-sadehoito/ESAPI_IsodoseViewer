@@ -20,12 +20,7 @@ namespace EQD2Viewer.Fixtures
     /// </summary>
     public static class FixtureLoader
     {
-        private static readonly JsonSerializerOptions JsonOpts = new()
-        {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true
-        };
+        private static readonly JsonSerializerOptions JsonOpts = FixtureJsonOptions.Default;
 
         /// <summary>
         /// Returns the base TestFixtures directory path.
