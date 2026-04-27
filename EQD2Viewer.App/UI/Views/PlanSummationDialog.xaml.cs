@@ -1,5 +1,6 @@
 using EQD2Viewer.Core.Models;
 using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Logging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -52,7 +53,10 @@ namespace EQD2Viewer.App.UI.Views
                         DateStr = reg.CreationDateTime?.ToString("d") ?? ""
                     });
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    SimpleLogger.Warning($"PlanSummationDialog: could not index registration '{reg?.Id}': {ex.GetType().Name}: {ex.Message}");
+                }
             }
             return list;
         }
