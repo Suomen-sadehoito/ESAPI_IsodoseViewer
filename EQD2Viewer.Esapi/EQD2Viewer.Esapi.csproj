@@ -78,6 +78,7 @@
     <Compile Include="Adapters\EsapiDataSource.cs" />
     <Compile Include="Adapters\EsapiGeometryConverter.cs" />
     <Compile Include="Adapters\EsapiSummationDataLoader.cs" />
+    <Compile Include="Adapters\EsapiVoxelLoader.cs" />
     <Compile Include="Script.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\EQD2Viewer.Core\Properties\GlobalAssemblyInfo.cs">

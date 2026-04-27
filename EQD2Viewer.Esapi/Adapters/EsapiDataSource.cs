@@ -116,17 +116,9 @@ namespace EQD2Viewer.Esapi.Adapters
         /// </summary>
         private VolumeData LoadImageVolume(Image image)
         {
-            int zSize = image.ZSize;
-            int xSize = image.XSize;
-            int ySize = image.YSize;
+            int zSize = image.ZSize, xSize = image.XSize, ySize = image.YSize;
 
-            // Pre-load all CT voxels into memory to facilitate rapid rendering.
-            var voxels = new int[zSize][,];
-            for (int z = 0; z < zSize; z++)
-            {
-                voxels[z] = new int[xSize, ySize];
-                image.GetVoxels(z, voxels[z]);
-            }
+            var voxels = EsapiVoxelLoader.LoadVoxels(image);
 
             // Dynamically detect the Hounsfield Unit (HU) offset required for DICOM conversion.
             int midSlice = zSize / 2;
@@ -145,17 +137,7 @@ namespace EQD2Viewer.Esapi.Adapters
         /// </summary>
         private DoseVolumeData LoadDoseVolume(Dose dose, PlanSetup plan)
         {
-            int zSize = dose.ZSize;
-            int xSize = dose.XSize;
-            int ySize = dose.YSize;
-
-            // Pre-load all dose voxels into memory.
-            var voxels = new int[zSize][,];
-            for (int z = 0; z < zSize; z++)
-            {
-                voxels[z] = new int[xSize, ySize];
-                dose.GetVoxels(z, voxels[z]);
-            }
+            var voxels = EsapiVoxelLoader.LoadVoxels(dose);
 
             // Compute scaling calibration factors to map raw voxel integers to absolute dose values.
             DoseValue dv0 = dose.VoxelToDoseValue(0);

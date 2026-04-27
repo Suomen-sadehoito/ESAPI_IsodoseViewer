@@ -50,15 +50,7 @@ namespace EQD2Viewer.Esapi.Adapters
             if (plan?.Dose == null) { SimpleLogger.Error($"Plan or dose not found: {planId}"); return null; }
 
             var dose = plan.Dose;
-            int dx = dose.XSize, dy = dose.YSize, dz = dose.ZSize;
-
-            // Pre-load all dose voxels into memory to optimize subsequent processing.
-            int[][,] doseVoxels = new int[dz][,];
-            for (int z = 0; z < dz; z++)
-            {
-                doseVoxels[z] = new int[dx, dy];
-                dose.GetVoxels(z, doseVoxels[z]);
-            }
+            int[][,] doseVoxels = EsapiVoxelLoader.LoadVoxels(dose);
 
             // Compute scaling calibration factors to map raw voxel values to absolute dose units.
             DoseValue dv0 = dose.VoxelToDoseValue(0);
@@ -84,12 +76,7 @@ namespace EQD2Viewer.Esapi.Adapters
                 if (img != null)
                 {
                     int cx = img.XSize, cy = img.YSize, cz = img.ZSize;
-                    var ctVoxels = new int[cz][,];
-                    for (int z = 0; z < cz; z++)
-                    {
-                        ctVoxels[z] = new int[cx, cy];
-                        img.GetVoxels(z, ctVoxels[z]);
-                    }
+                    var ctVoxels = EsapiVoxelLoader.LoadVoxels(img);
 
                     int midZ = cz / 2;
                     int huOffset = ImageUtils.DetermineHuOffset(ctVoxels[midZ], cx, cy);
