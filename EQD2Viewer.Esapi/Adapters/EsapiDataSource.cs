@@ -310,13 +310,11 @@ namespace EQD2Viewer.Esapi.Adapters
                         SourceFOR = reg.SourceFOR ?? "",
                         RegisteredFOR = reg.RegisteredFOR ?? "",
                         CreationDateTime = reg.CreationDateTime,
-                        Matrix = new double[]
-                        {
-                            x.x - o.x, y.x - o.x, z.x - o.x, o.x,
-                            x.y - o.y, y.y - o.y, z.y - o.y, o.y,
-                            x.z - o.z, y.z - o.z, z.z - o.z, o.z,
-                            0, 0, 0, 1
-                        }
+                        Matrix = MatrixMath.BuildAffineFromBasisImages(
+                            EsapiGeometryConverter.ToVec3(o),
+                            EsapiGeometryConverter.ToVec3(x),
+                            EsapiGeometryConverter.ToVec3(y),
+                            EsapiGeometryConverter.ToVec3(z))
                     });
                 }
                 catch (Exception ex)

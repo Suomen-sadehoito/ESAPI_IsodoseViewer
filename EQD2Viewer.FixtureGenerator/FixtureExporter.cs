@@ -1,5 +1,7 @@
 ﻿using VMS.TPS.Common.Model.Types;
 using VMS.TPS.Common.Model.API;
+using EQD2Viewer.Core.Calculations;
+using EQD2Viewer.Core.Data;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -500,12 +502,11 @@ namespace EQD2Viewer.FixtureGenerator
                         SourceFOR = reg.SourceFOR ?? "",
                         RegisteredFOR = reg.RegisteredFOR ?? "",
                         Date = reg.CreationDateTime?.ToString("o") ?? "",
-                        Matrix = new double[] {
-                            ex.x - o.x, ey.x - o.x, ez.x - o.x, o.x,
-                            ex.y - o.y, ey.y - o.y, ez.y - o.y, o.y,
-                            ex.z - o.z, ey.z - o.z, ez.z - o.z, o.z,
-                            0, 0, 0, 1
-                        }
+                        Matrix = MatrixMath.BuildAffineFromBasisImages(
+                            new Vec3(o.x, o.y, o.z),
+                            new Vec3(ex.x, ex.y, ex.z),
+                            new Vec3(ey.x, ey.y, ey.z),
+                            new Vec3(ez.x, ez.y, ez.z))
                     });
                 }
                 catch
