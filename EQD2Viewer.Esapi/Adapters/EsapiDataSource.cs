@@ -262,6 +262,7 @@ namespace EQD2Viewer.Esapi.Adapters
             {
                 if (structure.IsEmpty) continue;
 
+                string structureIdForLog = structure.Id;
                 try
                 {
                     var dvh = plan.GetDVHCumulativeData(structure,
@@ -291,7 +292,13 @@ namespace EQD2Viewer.Esapi.Adapters
                         Curve = curve
                     });
                 }
-                catch { /* Intentionally ignored: DVH metrics may not be calculable for all structures. */ }
+                catch (Exception ex)
+                {
+                    // DVH metrics may legitimately not be calculable for some structures
+                    // (e.g. mesh-less structures, point structures). Log so a missing
+                    // DVH curve is at least visible during snapshot diagnosis.
+                    SimpleLogger.Warning($"Could not load DVH curve for structure '{structureIdForLog}': {ex.GetType().Name}: {ex.Message}");
+                }
             }
 
             return result;
@@ -360,7 +367,14 @@ namespace EQD2Viewer.Esapi.Adapters
                         var img = plan.StructureSet?.Image;
                         if (img != null) { imageId = img.Id ?? ""; imageFOR = img.FOR ?? ""; }
                     }
-                    catch { /* Image association may be missing or inaccessible. */ }
+                    catch (Exception ex)
+                    {
+                        // Plan-to-image association can be missing on imported plans or
+                        // when the structure set's reference image is not accessible.
+                        // Log so the empty ImageId / ImageFOR in the resulting summary is
+                        // explainable from the log rather than mistaken for a real "no image" state.
+                        SimpleLogger.Warning($"Could not resolve image association for plan '{course.Id}/{plan.Id}': {ex.GetType().Name}: {ex.Message}");
+                    }
 
                     cd.Plans.Add(new PlanSummaryData
                     {
