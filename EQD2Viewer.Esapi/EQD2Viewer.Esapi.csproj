@@ -76,6 +76,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Adapters\EsapiDataSource.cs" />
+    <Compile Include="Adapters\EsapiGeometryConverter.cs" />
     <Compile Include="Adapters\EsapiSummationDataLoader.cs" />
     <Compile Include="Script.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

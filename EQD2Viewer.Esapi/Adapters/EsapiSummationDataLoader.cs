@@ -256,45 +256,10 @@ namespace EQD2Viewer.Esapi.Adapters
             }
         }
 
-        /// <summary>
-        /// Converts the native ESAPI <see cref="Image"/> spatial geometry into the decoupled domain format.
-        /// </summary>
-        private static VolumeGeometry ToGeometry(Image img) => new VolumeGeometry
-        {
-            XSize = img.XSize,
-            YSize = img.YSize,
-            ZSize = img.ZSize,
-            XRes = img.XRes,
-            YRes = img.YRes,
-            ZRes = img.ZRes,
-            Origin = ToVec3(img.Origin),
-            XDirection = ToVec3(img.XDirection),
-            YDirection = ToVec3(img.YDirection),
-            ZDirection = ToVec3(img.ZDirection),
-            FrameOfReference = img.FOR ?? "",
-            Id = img.Id ?? ""
-        };
-
-        /// <summary>
-        /// Converts the native ESAPI <see cref="Dose"/> grid spatial geometry into the decoupled domain format.
-        /// </summary>
-        private static VolumeGeometry ToDoseGeometry(Dose dose) => new VolumeGeometry
-        {
-            XSize = dose.XSize,
-            YSize = dose.YSize,
-            ZSize = dose.ZSize,
-            XRes = dose.XRes,
-            YRes = dose.YRes,
-            ZRes = dose.ZRes,
-            Origin = ToVec3(dose.Origin),
-            XDirection = ToVec3(dose.XDirection),
-            YDirection = ToVec3(dose.YDirection),
-            ZDirection = ToVec3(dose.ZDirection)
-        };
-
-        /// <summary>
-        /// Converts an ESAPI <see cref="VVector"/> to the domain-specific <see cref="Vec3"/> structure.
-        /// </summary>
-        private static Vec3 ToVec3(VVector v) => new Vec3(v.x, v.y, v.z);
+        // Geometry conversions delegate to EsapiGeometryConverter so both adapters
+        // share a single source of truth for ESAPI -> Vec3 / VolumeGeometry mapping.
+        private static VolumeGeometry ToGeometry(Image img) => EsapiGeometryConverter.ToVolumeGeometry(img);
+        private static VolumeGeometry ToDoseGeometry(Dose dose) => EsapiGeometryConverter.ToVolumeGeometry(dose);
+        private static Vec3 ToVec3(VVector v) => EsapiGeometryConverter.ToVec3(v);
     }
 }
