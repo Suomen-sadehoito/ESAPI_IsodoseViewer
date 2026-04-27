@@ -1,4 +1,5 @@
 ﻿using EQD2Viewer.Core.Serialization;
+using EQD2Viewer.Core.Calculations;
 using EQD2Viewer.Core.Data;
 using System;
 using System.Collections.Generic;
@@ -82,8 +83,7 @@ namespace EQD2Viewer.FixtureGenerator
                     double doseGy = 0;
                     if (inside)
                     {
-                        doseGy = (dose.Voxels[dz][dx, dy] * dose.Scaling.RawScale
-                        + dose.Scaling.RawOffset) * dose.Scaling.UnitToGy;
+                        doseGy = ImageUtils.RawToGy(dose.Voxels[dz][dx, dy], dose.Scaling);
                     }
 
                     settings.ReferenceDosePoints.Add(new ReferenceDosePoint

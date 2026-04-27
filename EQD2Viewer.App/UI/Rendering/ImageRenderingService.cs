@@ -141,7 +141,7 @@ namespace EQD2Viewer.App.UI.Rendering
             for (int y = 0; y < dy; y++)
                 for (int x = 0; x < dx; x++)
                 {
-                    double dGy = (doseBuffer[x, y] * _doseRawScale + _doseRawOffset) * _doseUnitToGyFactor;
+                    double dGy = ImageUtils.RawToGy(doseBuffer[x, y], _doseRawScale, _doseRawOffset, _doseUnitToGyFactor);
                     if (eqd2Active) dGy = EQD2Calculator.ToEQD2Fast(dGy, eqd2QuadFactor, eqd2LinFactor);
                     doseGyGrid[x, y] = dGy;
                     if (dGy > maxDose) maxDose = dGy;
@@ -392,7 +392,7 @@ namespace EQD2Viewer.App.UI.Rendering
              || dz < 0 || dz >= _doseGeo.ZSize)
                 return double.NaN;
 
-            double dGy = (_doseCache[dz][dx, dy] * _doseRawScale + _doseRawOffset) * _doseUnitToGyFactor;
+            double dGy = ImageUtils.RawToGy(_doseCache[dz][dx, dy], _doseRawScale, _doseRawOffset, _doseUnitToGyFactor);
 
             if (eqd2Settings != null && eqd2Settings.IsEnabled
        && eqd2Settings.NumberOfFractions > 0 && eqd2Settings.AlphaBeta > 0)

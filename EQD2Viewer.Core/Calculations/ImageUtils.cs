@@ -1,5 +1,7 @@
-﻿using EQD2Viewer.Core.Models;
+﻿using EQD2Viewer.Core.Data;
+using EQD2Viewer.Core.Models;
 using System;
+using System.Runtime.CompilerServices;
 
 namespace EQD2Viewer.Core.Calculations
 {
@@ -9,6 +11,25 @@ namespace EQD2Viewer.Core.Calculations
     /// </summary>
     public static class ImageUtils
     {
+        /// <summary>
+        /// Converts a single raw dose voxel value to absolute Gy via the
+        /// linear calibration <c>(raw * rawScale + rawOffset) * unitToGy</c>.
+        /// Centralises the per-pixel scaling formula used by every rendering
+        /// and export path that walks a dose grid without bilinear resampling.
+        /// Marked <see cref="MethodImplOptions.AggressiveInlining"/> because
+        /// callers sit inside per-voxel hot loops (see docs/hot-paths.md §2).
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double RawToGy(int raw, double rawScale, double rawOffset, double unitToGy)
+            => (raw * rawScale + rawOffset) * unitToGy;
+
+        /// <summary>
+        /// Convenience overload taking a <see cref="DoseScaling"/> directly.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double RawToGy(int raw, DoseScaling scaling)
+            => RawToGy(raw, scaling.RawScale, scaling.RawOffset, scaling.UnitToGy);
+
         /// <summary>
         /// Determines whether CT voxels need a 32768 offset subtracted.
         /// Some ESAPI CT images store HU as unsigned (0-65535) rather than signed.
