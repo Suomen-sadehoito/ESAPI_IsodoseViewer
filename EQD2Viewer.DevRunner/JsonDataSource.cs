@@ -1,5 +1,6 @@
 ﻿using EQD2Viewer.Core.Data;
 using EQD2Viewer.Core.Interfaces;
+using EQD2Viewer.Core.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -174,7 +175,10 @@ namespace EQD2Viewer.DevRunner
                                 voxels[slice.sliceIndex][x, y] = slice.rawValues[y * slice.width + x];
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    SimpleLogger.Warning($"JsonDataSource: failed to load dose slice '{file}': {ex.GetType().Name}: {ex.Message}");
+                }
             }
 
             InterpolateMissingDoseSlices(voxels, xSize, ySize, zSize, sliceFiles.Length);
@@ -265,7 +269,10 @@ namespace EQD2Viewer.DevRunner
                     }
                     result.Add(sd);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    SimpleLogger.Warning($"JsonDataSource: failed to load structure '{file}': {ex.GetType().Name}: {ex.Message}");
+                }
             }
             return result;
         }
@@ -296,7 +303,10 @@ namespace EQD2Viewer.DevRunner
                         Curve = df.curve ?? Array.Empty<double[]>()
                     });
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    SimpleLogger.Warning($"JsonDataSource: failed to load DVH curve '{file}': {ex.GetType().Name}: {ex.Message}");
+                }
             }
             return result;
         }
