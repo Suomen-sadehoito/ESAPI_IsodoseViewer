@@ -29,4 +29,21 @@
 		         Link="Properties\GlobalAssemblyInfo.cs" />
 	</ItemGroup>
 
+	<!-- Architectural guardrail: only EQD2Viewer.Esapi (the live ESAPI adapter),
+	     EQD2Viewer.Stubs (CI-side stand-ins for Varian binaries), and
+	     EQD2Viewer.FixtureGenerator (an ESAPI script that exports JSON fixtures)
+	     may reference VMS.TPS.* assemblies. Any future drift fails the build with
+	     a pointed error instead of going unnoticed. See
+	     docs/clean-architecture-audit.md for the rule itself. -->
+	<Target Name="EnforceVmsTpsBoundary" BeforeTargets="ResolveAssemblyReferences">
+		<PropertyGroup>
+			<_VmsTpsAllowlist>;EQD2Viewer.Esapi;EQD2Viewer.Stubs;EQD2Viewer.FixtureGenerator;</_VmsTpsAllowlist>
+		</PropertyGroup>
+		<ItemGroup>
+			<_VmsTpsRefs Include="@(Reference)" Condition=" $([System.String]::Copy('%(Identity)').StartsWith('VMS.TPS')) " />
+		</ItemGroup>
+		<Error Condition=" '@(_VmsTpsRefs)' != '' AND !$(_VmsTpsAllowlist.Contains(';$(MSBuildProjectName);')) "
+		       Text="Architectural rule violated: project '$(MSBuildProjectName)' references a VMS.TPS.* assembly (@(_VmsTpsRefs)). Only EQD2Viewer.Esapi, EQD2Viewer.Stubs, and EQD2Viewer.FixtureGenerator may reference Varian ESAPI. Move the call sites behind an interface in EQD2Viewer.Core." />
+	</Target>
+
 </Project>
