@@ -464,3 +464,12 @@ costura-*
 # Runtime logs emitted by DevRunner / ESAPI script
 EQD2Viewer_Dev.log
 EQD2Viewer_*.log
+
+# Local-only working audit reports — kept out of the public repo.
+# The two reports that ARE tracked (refactor-backlog.md and
+# clean-architecture-audit.md) cover the architectural decisions and
+# open work items; the audits below are working notes used during
+# the cleanup pass and not intended for public review.
+docs/duplication-audit.md
+docs/dead-code-audit.md
+docs/hot-paths.md
