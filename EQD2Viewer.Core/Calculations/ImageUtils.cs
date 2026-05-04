@@ -17,7 +17,7 @@ namespace EQD2Viewer.Core.Calculations
         /// Centralises the per-pixel scaling formula used by every rendering
         /// and export path that walks a dose grid without bilinear resampling.
         /// Marked <see cref="MethodImplOptions.AggressiveInlining"/> because
-        /// callers sit inside per-voxel hot loops (see docs/hot-paths.md §2).
+        /// callers sit inside per-voxel hot loops.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double RawToGy(int raw, double rawScale, double rawOffset, double unitToGy)
