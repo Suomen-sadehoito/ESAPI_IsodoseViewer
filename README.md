@@ -112,7 +112,7 @@ Varian licence.
 | Version | Date | Notes |
 |---|---|---|
 | 0.9.4-beta | 2026-04 | Removed ITK / SimpleITK-based deformable image registration (DIR) and all related QA, body-mask, and FOV-overlap analysis code. The viewer is now a focused EQD2 / DVH research prototype with affine-only multi-plan summation. |
-| 0.9.3-beta | 2026-04 | (Withdrawn) Added SimpleITK B-spline DIR with TG-132 / Bosma 2024 style QA, body-mask preprocessing, and FOV overlap analysis. Removed in 0.9.4-beta. |
+| 0.9.3-beta | 2026-04 | (Withdrawn) Added SimpleITK B-spline DIR, body-mask preprocessing, and FOV overlap analysis. Removed in 0.9.4-beta. |
 | 0.9.2-beta | 2026-04 | (Withdrawn) Initial SimpleITK-based DIR module. Removed in 0.9.4-beta. |
 | 0.9.1-beta | 2026-04 | Clean Architecture refactor. Offline DevRunner, centralised BuildOutput, dependency management. |
 | 0.9.0-beta | 2026-03 | Feature and calculation stabilisation. |
