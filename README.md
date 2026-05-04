@@ -16,12 +16,20 @@ sääntelyvelvoitteista.*
 
 ## Layout
 
-The interesting split is that the algorithm core (`EQD2Viewer.Core`,
-`EQD2Viewer.Services`) has no Varian ESAPI dependency, so it builds and
-tests on plain .NET. The ESAPI projects (`EQD2Viewer.Esapi`,
-`EQD2Viewer.FixtureGenerator`) only exist to dump anonymised JSON
-fixtures out of a TPS. `EQD2Viewer.DevRunner` is a standalone WPF host
-that loads those fixtures and gives you the full UI without Eclipse.
+The algorithm core (`EQD2Viewer.Core`, `EQD2Viewer.Services`) has no
+Varian ESAPI dependency, so it builds and tests on plain .NET. The WPF
+UI in `EQD2Viewer.App` doesn't touch ESAPI either — it just consumes a
+`ClinicalSnapshot` POCO.
+
+Two ways to feed the UI:
+
+- `EQD2Viewer.Esapi` — the actual ESAPI script. Runs inside Eclipse,
+  pulls a snapshot from the live TPS, and hands it to `AppLauncher`.
+- `EQD2Viewer.DevRunner` — standalone WPF host. Loads a JSON snapshot
+  from disk and runs the same UI without Eclipse.
+
+`EQD2Viewer.FixtureGenerator` is a separate ESAPI script that dumps
+those JSON snapshots — that's how DevRunner gets its input.
 
 ## Build & test
 
